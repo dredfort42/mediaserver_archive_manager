@@ -1,6 +1,43 @@
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
+# IDE/editor directories and files
+.vscode/
+.code-workspace
+
+# JetBrains (GoLand, IntelliJ)
+.idea/
+*.iml
+*.iws
+workspace.xml
+tasks.xml
+usage.statistics.xml
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim/Neovim swap and backup files
+*.swp
+*.swo
+*~
+[._]*.s[a-v][a-z]
+
+# Emacs
+*~
+.#*
+.emacs.desktop
+.emacs.d/
+
+# Other editors/tools
+.history/
+.cache/
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -11,14 +48,11 @@
 # Test binary, built with `go test -c`
 *.test
 
-# Code coverage profiles and other test artifacts
+# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-coverage.*
-*.coverprofile
-profile.cov
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Go workspace file
 go.work
@@ -26,7 +60,24 @@ go.work.sum
 
 # env file
 .env
+env_c*.*
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Key files and licenses
+*.pem
+license_*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Ignore files and directories starting with an underscore at any level
+_*
+_*/
+**/_*
+**/_*/
+
+# Ignore config files
+config.yaml
+config.yml
+config.json
+config.ini
