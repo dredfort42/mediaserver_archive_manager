@@ -148,7 +148,7 @@ add_executable(${ARCHIVE_MANAGER_NAME}
     src/shared/logPrinter/logPrinter.cpp
     src/shared/messenger/messenger.cpp
     ${PROTO_SRCS}
-    # src/services/manager/thConsumer.cpp
+    src/services/manager/thConsumer.cpp
     # src/services/manager/thController.cpp
     # src/services/manager/thDatabase.cpp
     # src/services/manager/thReader.cpp

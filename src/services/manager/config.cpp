@@ -87,6 +87,50 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     return archiveManagerConfig;
 }
 
+MessengerConfig getMessengerConfig(ConfigMap *config)
+{
+    MessengerConfig messengerConfig;
+
+    messengerConfig.brokers = config->getProperty("kafka.brokers");
+    if (messengerConfig.brokers.empty())
+    {
+        print(LogType::DEBUGER, "Kafka brokers not defined, using default value: localhost:9092");
+        messengerConfig.brokers = "localhost:9092";
+    }
+
+    messengerConfig.clientId = config->getProperty("kafka.archive_manager_client_id");
+    if (messengerConfig.clientId.empty())
+    {
+        print(LogType::DEBUGER, "Kafka client id not defined, using default value: archive_manager");
+        messengerConfig.clientId = "archive_manager";
+    }
+
+    messengerConfig.groupId = config->getProperty("kafka.archive_manager_group_id");
+    if (messengerConfig.groupId.empty())
+    {
+        print(LogType::DEBUGER, "Kafka group id not defined, using default value: archive_manager_group");
+        messengerConfig.groupId = "archive_manager_group";
+    }
+
+    messengerConfig.topicSystemDigest = config->getProperty("kafka.topic_system_digest");
+    if (messengerConfig.topicSystemDigest.empty())
+    {
+        print(LogType::ERROR, "Kafka topic for system digest not defined");
+        exit(RTN_ERROR);
+    }
+
+    messengerConfig.topicIFrameByteOffsets = config->getProperty("kafka.topic_archive_iframe_byte_offsets");
+    if (messengerConfig.topicIFrameByteOffsets.empty())
+    {
+        print(LogType::ERROR, "Kafka topic for iframe byte offsets not defined");
+        exit(RTN_ERROR);
+    }
+
+    print(LogType::DEBUGER, "Messenger configuration readed");
+
+    return messengerConfig;
+}
+
 DatabaseConfig getDatabaseConfig(ConfigMap *config)
 {
     DatabaseConfig databaseConfig;
@@ -136,41 +180,4 @@ DatabaseConfig getDatabaseConfig(ConfigMap *config)
     print(LogType::DEBUGER, "Database configuration readed");
 
     return databaseConfig;
-}
-
-MessengerConfig getMessengerConfig(ConfigMap *config)
-{
-    MessengerConfig messengerConfig;
-
-    messengerConfig.brokers = config->getProperty("kafka.brokers");
-    if (messengerConfig.brokers.empty())
-    {
-        print(LogType::DEBUGER, "Kafka brokers not defined, using default value: localhost:9092");
-        messengerConfig.brokers = "localhost:9092";
-    }
-
-    messengerConfig.clientId = config->getProperty("kafka.archive_manager_client_id");
-    if (messengerConfig.clientId.empty())
-    {
-        print(LogType::DEBUGER, "Kafka client id not defined, using default value: archive_manager");
-        messengerConfig.clientId = "archive_manager";
-    }
-
-    messengerConfig.groupId = config->getProperty("kafka.archive_manager_group_id");
-    if (messengerConfig.groupId.empty())
-    {
-        print(LogType::DEBUGER, "Kafka group id not defined, using default value: archive_manager_group");
-        messengerConfig.groupId = "archive_manager_group";
-    }
-
-    messengerConfig.topicSystemDigest = config->getProperty("kafka.topic_system_digest");
-    if (messengerConfig.topicSystemDigest.empty())
-    {
-        print(LogType::ERROR, "Kafka topic for system digest not defined");
-        exit(RTN_ERROR);
-    }
-
-    print(LogType::DEBUGER, "Messenger configuration readed");
-
-    return messengerConfig;
 }

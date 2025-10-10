@@ -24,7 +24,8 @@ std::string initMessenger(Messenger &messenger, MessengerConfig &messengerConfig
     if (messenger.createMessenger())
         return "Failed to create messenger";
 
-    // topics.insert(messengerConfig.topicCameras);
+    topics.insert(messengerConfig.topicIFrameByteOffsets);
+
     return "";
 }
 

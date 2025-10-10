@@ -63,13 +63,7 @@ int main(int argc, char *argv[])
                          archiveManagerConfig,
                          serviceDigest);
 
-    // while (!wasInrerrupted && PQstatus(dbConnect) != CONNECTION_OK)
-    // {
-    //     print(LogType::ERROR, "Connection to database failed: " + std::string(PQerrorMessage(dbConnect)));
-    //     PQfinish(dbConnect);
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-    //     dbConnect = PQconnectdb(connectionString.c_str());
-    // }
+    std::thread thConsumer(consumeMessages, &messenger, &messengerContent, &topics);
 
     //---
 
@@ -84,7 +78,6 @@ int main(int argc, char *argv[])
     //                        &messengerContent,
     //                        &topics,
     //                        &config);
-    // sleep(1);
 
     // std::thread thCameras(readCameras,
     //                       &wasInrerrupted,
@@ -115,13 +108,6 @@ int main(int argc, char *argv[])
     //                       &messengerContent,
     //                       &config);
 
-    // thConsumer.join();
-    // thCameras.join();
-    // thTasks.join();
-    // thCamerasController.join();
-    // thTasksController.join();
-    // thDatabse.join();
-
     // print(LogType::WARNING, "Archive process with pid " + std::to_string(getpid()) + " stopped successfully");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -149,9 +135,12 @@ int main(int argc, char *argv[])
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    // thController.join();
+    thConsumer.join();
     // thCameras.join();
-    // thConsumer.join();
+    // thTasks.join();
+    // thCamerasController.join();
+    // thTasksController.join();
+    // thDatabase.join();
 
     serviceDigest = ServiceStatus::STOPPED;
     print(serviceDigest);

@@ -97,6 +97,7 @@ struct MessengerConfig
 
     // Topics
     std::string topicSystemDigest;
+    std::string topicIFrameByteOffsets;
     // std::string topicCameras;
 };
 
@@ -131,6 +132,18 @@ void produceServiceDigest(Messenger &messenger,
                           std::string &topic,
                           const ArchiveManagerConfig &archiveManagerConfig,
                           ServiceStatus statusCode);
+
+/*
+ * @brief The Kafka consumer thread
+ * @param messenger The messenger
+ * @param messengerContent The messenger content
+ * @param topics The topics to consume
+ */
+void consumeMessages(Messenger *messenger,
+                     Messenger::messenger_content_t *messengerContent,
+                     Messenger::topics_t *topics);
+
+// ---
 
 // /*
 //  * @brief The struct that matches the JSON camera entry structure
