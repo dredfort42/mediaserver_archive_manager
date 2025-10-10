@@ -122,6 +122,13 @@ message ProtoCamera {
      * Instance that this camera is attached to.
      */
     string camera_connector_uuid = 7;
+
+    /**
+     * Archive retention days
+     * Number of days to retain the archived footage.
+     * 0 - means no archiving.
+     */
+    uint32 archive_retention_days = 8;
 }
 
 /******************************************
