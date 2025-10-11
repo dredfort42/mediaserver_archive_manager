@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
     Messenger messenger(&isInterrupted);
     Messenger::topics_t topics;
     Messenger::messenger_content_t messengerContent;
-    // std::map<std::string, Stream> streams; // <streamUUID, Stream>
-    // std::mutex streamsMx;
+    std::map<std::string, Archive> archivesToManage; // <streamUUID, Archive>
+    std::mutex archivesToManageMx;
 
     std::string err = initMessenger(messenger, messengerConfig, topics, archiveManagerConfig.appUUID);
     if (!err.empty())
@@ -64,6 +64,13 @@ int main(int argc, char *argv[])
                          serviceDigest);
 
     std::thread thConsumer(consumeMessages, &messenger, &messengerContent, &topics);
+
+    std::thread thCameras(readCameras,
+                          &isInterrupted,
+                          &messengerContent,
+                          &messengerConfig,
+                          &archivesToManage,
+                          &archivesToManageMx);
 
     //---
 

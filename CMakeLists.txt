@@ -98,7 +98,7 @@ add_library(common_includes INTERFACE)
 target_include_directories(common_includes INTERFACE
     "${CMAKE_SOURCE_DIR}/src/shared"
     # "${CMAKE_SOURCE_DIR}/src/shared/archiveTask"
-    # "${CMAKE_SOURCE_DIR}/src/shared/camera"
+    "${CMAKE_SOURCE_DIR}/src/shared/camera"
     # "${CMAKE_SOURCE_DIR}/src/shared/chronoName"
     "${CMAKE_SOURCE_DIR}/src/shared/configReader"
     # "${CMAKE_SOURCE_DIR}/src/shared/frameParser"
@@ -143,12 +143,13 @@ set(ARCHIVE_MANAGER_NAME archive_manager)
 
 add_executable(${ARCHIVE_MANAGER_NAME}
     # src/shared/archiveTask/archiveTask.cpp
-    # src/shared/camera/camera.cpp
+    src/shared/camera/archive.cpp
     src/shared/configReader/configMap.cpp
     src/shared/logPrinter/logPrinter.cpp
     src/shared/messenger/messenger.cpp
     ${PROTO_SRCS}
     src/services/manager/thConsumer.cpp
+    src/services/manager/thCameras.cpp
     # src/services/manager/thController.cpp
     # src/services/manager/thDatabase.cpp
     # src/services/manager/thReader.cpp

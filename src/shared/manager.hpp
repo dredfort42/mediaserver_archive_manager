@@ -14,13 +14,16 @@
 #include "logPrinter.hpp"
 #include "configMap.hpp"
 // #include "archiveTask.hpp"
-// #include "camera.hpp"
+#include "archive.hpp"
 // #include "chronoName.hpp"
 #include "messenger.hpp"
 #include "protoData.pb.h"
 
 #define RTN_ERROR -1
 #define RTN_SUCCESS 0
+
+#define CONNECTION_STATUS_CODE_ON 1
+#define CONNECTION_STATUS_CODE_OFF 0
 
 namespace ArchiveManagerConstants
 {
@@ -97,8 +100,8 @@ struct MessengerConfig
 
     // Topics
     std::string topicSystemDigest;
+    std::string topicCameras;
     std::string topicIFrameByteOffsets;
-    // std::string topicCameras;
 };
 
 /*
@@ -199,17 +202,19 @@ void consumeMessages(Messenger *messenger,
 //                      Messenger::topics_t *topics,
 //                      ConfigMap *config);
 
-// /*
-//  * @brief The read cameras configuration thread
-//  * @param wasInrerrupted The flag to stop the thread
-//  * @param messengerContent The messenger content
-//  * @param cameras The cameras map
-//  * @param config The configuration map
-//  */
-// void readCameras(volatile sig_atomic_t *wasInrerrupted,
-//                  Messenger::messenger_content_t *messengerContent,
-//                  std::map<std::string, Camera> *cameras,
-//                  ConfigMap *config);
+/*
+ * @brief The read cameras configuration thread
+ * @param isInterrupted The flag to stop the thread
+ * @param messengerContent The messenger content
+ * @param messengerConfig The messenger configuration
+ * @param streamsToArchive The map of streams to archive <streamUUID, Archive>
+ * @param streamsToArchiveMx The mutex for the streams to archive map
+ */
+void readCameras(volatile sig_atomic_t *isInterrupted,
+                 Messenger::messenger_content_t *messengerContent,
+                 MessengerConfig *messengerConfig,
+                 std::map<std::string, Archive> *streamsToArchive,
+                 std::mutex *streamsToArchiveMx);
 
 // /*
 //  * @brief The read tasks configuration thread

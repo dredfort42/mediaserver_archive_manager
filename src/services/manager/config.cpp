@@ -119,6 +119,13 @@ MessengerConfig getMessengerConfig(ConfigMap *config)
         exit(RTN_ERROR);
     }
 
+    messengerConfig.topicCameras = config->getProperty("kafka.topic_cameras");
+    if (messengerConfig.topicCameras.empty())
+    {
+        print(LogType::ERROR, "Kafka topic for cameras not defined");
+        exit(RTN_ERROR);
+    }
+
     messengerConfig.topicIFrameByteOffsets = config->getProperty("kafka.topic_archive_iframe_byte_offsets");
     if (messengerConfig.topicIFrameByteOffsets.empty())
     {
