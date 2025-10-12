@@ -25,31 +25,22 @@ endif()
 # Add custom CMake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# # FetchContent for external dependencies
-# include(FetchContent)
-# FetchContent_Declare(
-#     json
-#     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-#     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-# )
-# FetchContent_MakeAvailable(json)
+# # Copy configuration files
+# if(MACOSX AND EXISTS "${CMAKE_SOURCE_DIR}/config/service.cfg")
+#     configure_file(
+#         "${CMAKE_SOURCE_DIR}/config/service.cfg"
+#         "${CMAKE_CURRENT_BINARY_DIR}/config/service.cfg"
+#         COPYONLY
+#     )
+# endif()
 
-# Copy configuration files
-if(MACOSX AND EXISTS "${CMAKE_SOURCE_DIR}/config/service.cfg")
-    configure_file(
-        "${CMAKE_SOURCE_DIR}/config/service.cfg"
-        "${CMAKE_CURRENT_BINARY_DIR}/config/service.cfg"
-        COPYONLY
-    )
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/local.cfg")
-    configure_file(
-        "${CMAKE_SOURCE_DIR}/local.cfg"
-        "${CMAKE_CURRENT_BINARY_DIR}/local.cfg"
-        COPYONLY
-    )
-endif()
+# if(EXISTS "${CMAKE_SOURCE_DIR}/local.cfg")
+#     configure_file(
+#         "${CMAKE_SOURCE_DIR}/local.cfg"
+#         "${CMAKE_CURRENT_BINARY_DIR}/local.cfg"
+#         COPYONLY
+#     )
+# endif()
 
 # Find required packages
 find_package(FFmpeg REQUIRED)
@@ -143,7 +134,7 @@ set(ARCHIVE_MANAGER_NAME archive_manager)
 
 add_executable(${ARCHIVE_MANAGER_NAME}
     # src/shared/archiveTask/archiveTask.cpp
-    src/shared/camera/archive.cpp
+    src/shared/camera/archiveParameters.cpp
     src/shared/configReader/configMap.cpp
     src/shared/logPrinter/logPrinter.cpp
     src/shared/messenger/messenger.cpp

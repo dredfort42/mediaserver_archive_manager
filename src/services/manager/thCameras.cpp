@@ -2,7 +2,7 @@
 
 struct CameraArchiveInfo
 {
-    Archive archive; // main stream only
+    ArchiveParameters archive; // main stream only
     uint8_t statusCode;
 };
 
@@ -38,15 +38,13 @@ void printCameraMessage(const std::string &cameraUuid, proto::ProtoCamera &proto
     table.printLogTable(LogType::DEBUGER);
 }
 
-void printAddedArchiveInfo(const std::string &streamUUID, Archive &archive)
+void printAddedArchiveInfo(const std::string &streamUUID, ArchiveParameters &archive)
 {
     if (!getDebug())
         return;
 
     LogTable table("/// STREAM ADDED");
     table.addRow("Stream UUID", streamUUID);
-    table.addRow("RTSP URL", archive.getRTSPURL());
-    table.addRow("Connection Type", getConnectioTypeDescription(archive.getConnectionType()));
     table.addRow("Archive Retention Days", std::to_string(archive.getArchiveRetentionDays()));
     table.printLogTable(LogType::DEBUGER);
 }
@@ -86,10 +84,8 @@ CameraArchiveInfo getCameraArchiveInfo(const std::string &cameraUuid, const std:
         CAI.statusCode = protoCamera.status_code();
 
         if (!protoCamera.main_rtsp_url().empty())
-            CAI.archive = Archive(cameraUuid + "_main",
-                                  protoCamera.main_rtsp_url(),
-                                  protoCamera.main_connection_type(),
-                                  protoCamera.archive_retention_days());
+            CAI.archive = ArchiveParameters(cameraUuid + "_main",
+                                            protoCamera.archive_retention_days());
     }
     catch (const std::exception &e)
     {
@@ -99,10 +95,10 @@ CameraArchiveInfo getCameraArchiveInfo(const std::string &cameraUuid, const std:
     return CAI;
 }
 
-void addArchiveToMap(std::map<std::string, Archive> *archivesToManage, std::mutex *archivesToManageMx, Archive archive)
+void addArchiveToMap(std::map<std::string, ArchiveParameters> *archivesToManage, std::mutex *archivesToManageMx, ArchiveParameters archive)
 {
     if (archivesToManage->find(archive.getStreamUUID()) == archivesToManage->end())
-        archivesToManage->insert(std::pair<std::string, Archive>(archive.getStreamUUID(), archive));
+        archivesToManage->insert(std::pair<std::string, ArchiveParameters>(archive.getStreamUUID(), archive));
     else
     {
         archivesToManageMx->lock();
@@ -113,7 +109,7 @@ void addArchiveToMap(std::map<std::string, Archive> *archivesToManage, std::mute
     printAddedArchiveInfo(archive.getStreamUUID(), archive);
 }
 
-void removeArchiveFromMap(std::map<std::string, Archive> *archivesToManage, std::mutex *archivesToManageMx, Archive *archive)
+void removeArchiveFromMap(std::map<std::string, ArchiveParameters> *archivesToManage, std::mutex *archivesToManageMx, ArchiveParameters *archive)
 {
     if (archivesToManage->find(archive->getStreamUUID()) != archivesToManage->end())
     {
@@ -125,9 +121,9 @@ void removeArchiveFromMap(std::map<std::string, Archive> *archivesToManage, std:
     }
 }
 
-void processArchive(std::map<std::string, Archive> *archivesToManage, std::mutex *archivesToManageMx, Archive *archive)
+void processArchive(std::map<std::string, ArchiveParameters> *archivesToManage, std::mutex *archivesToManageMx, ArchiveParameters *archive)
 {
-    if (archive->getRTSPURL().empty() || archive->getConnectionType() == CONNECTION_TYPE_STANDBY)
+    if (archive->getStreamUUID().empty() || !archive->getArchiveRetentionDays())
     {
         removeArchiveFromMap(archivesToManage, archivesToManageMx, archive);
         print(LogType::DEBUGER, "Archive " + archive->getStreamUUID() + " is in STANDBY or has empty RTSP URL, removing it from the map if exists.");
@@ -142,11 +138,12 @@ void processArchive(std::map<std::string, Archive> *archivesToManage, std::mutex
 void readCameras(volatile sig_atomic_t *isInterrupted,
                  Messenger::messenger_content_t *messengerContent,
                  MessengerConfig *messengerConfig,
-                 std::map<std::string, Archive> *archivesToManage,
+                 std::map<std::string, ArchiveParameters> *archivesToManage,
                  std::mutex *archivesToManageMx)
 {
     print(LogType::DEBUGER, ">>> Start read cameras thread");
 
+    print(LogType::DEBUGER, "Cameras topic: " + messengerConfig->topicCameras);
     std::string camerasTopic = messengerConfig->topicCameras;
 
     waitingForCamerasData(isInterrupted, messengerContent, camerasTopic);

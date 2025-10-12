@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     Messenger messenger(&isInterrupted);
     Messenger::topics_t topics;
     Messenger::messenger_content_t messengerContent;
-    std::map<std::string, Archive> archivesToManage; // <streamUUID, Archive>
+    std::map<std::string, ArchiveParameters> archivesToManage; // <streamUUID, ArchiveParameters>
     std::mutex archivesToManageMx;
 
     std::string err = initMessenger(messenger, messengerConfig, topics, archiveManagerConfig.appUUID);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     }
 
     thConsumer.join();
-    // thCameras.join();
+    thCameras.join();
     // thTasks.join();
     // thCamerasController.join();
     // thTasksController.join();

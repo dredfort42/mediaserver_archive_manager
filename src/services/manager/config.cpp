@@ -53,7 +53,7 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     if (archiveManagerConfig.appName.empty())
     {
         print(LogType::DEBUGER, "Archive manager name not defined, using default name: archive_manager");
-        archiveManagerConfig.appName = "archive_manager";
+        archiveManagerConfig.appName = "mediaserver_archive_manager";
     }
 
     archiveManagerConfig.appVersion = appVersion;

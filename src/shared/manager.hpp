@@ -14,7 +14,7 @@
 #include "logPrinter.hpp"
 #include "configMap.hpp"
 // #include "archiveTask.hpp"
-#include "archive.hpp"
+#include "archiveParameters.hpp"
 // #include "chronoName.hpp"
 #include "messenger.hpp"
 #include "protoData.pb.h"
@@ -213,7 +213,7 @@ void consumeMessages(Messenger *messenger,
 void readCameras(volatile sig_atomic_t *isInterrupted,
                  Messenger::messenger_content_t *messengerContent,
                  MessengerConfig *messengerConfig,
-                 std::map<std::string, Archive> *streamsToArchive,
+                 std::map<std::string, ArchiveParameters> *streamsToArchive,
                  std::mutex *streamsToArchiveMx);
 
 // /*
