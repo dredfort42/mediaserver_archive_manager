@@ -72,6 +72,13 @@ int main(int argc, char *argv[])
                           &archivesToManage,
                           &archivesToManageMx);
 
+    std::thread thRecorder(recorderController,
+                           &isInterrupted,
+                           &serviceDigest,
+                           &archiveManagerConfig,
+                           &archivesToManage,
+                           &archivesToManageMx);
+
     //---
 
     // Messenger::topics_t topics;

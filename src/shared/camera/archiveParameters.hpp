@@ -38,7 +38,6 @@ public:
 
     pid_t getPID() const;
     std::string getStreamUUID() const;
-    std::string getRTSPURL() const;
     uint32_t getArchiveRetentionDays() const;
     void printInfo() const;
 

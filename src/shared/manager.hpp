@@ -40,9 +40,10 @@ struct ArchiveManagerConfig
     std::string appVersion;
     std::string appUUID;
     std::string configPath;
-    std::string readerPath;
-    std::string writerPath;
-    std::string archivePath;
+    std::string archiveReaderPath;
+    std::string archiveRecorderPath;
+    std::string archiveStoragePath;
+    std::string archiveFragmentLengthInSeconds;
 };
 
 /*
@@ -215,6 +216,20 @@ void readCameras(volatile sig_atomic_t *isInterrupted,
                  MessengerConfig *messengerConfig,
                  std::map<std::string, ArchiveParameters> *streamsToArchive,
                  std::mutex *streamsToArchiveMx);
+
+/*
+ * @brief The recording controller thread
+ * @param isInterrupted The flag to stop the thread
+ * @param serviceDigest The service status code
+ * @param archiveManagerConfig The archive manager configuration
+ * @param archivesToManage The map of streams to archive <streamUUID, ArchiveParameters>
+ * @param archivesToManageMx The mutex for the streams to archive map
+ */
+void recorderController(volatile sig_atomic_t *isInterrupted,
+                        std::atomic<ServiceStatus> *serviceDigest,
+                        ArchiveManagerConfig *archiveManagerConfig,
+                        std::map<std::string, ArchiveParameters> *archivesToManage,
+                        std::mutex *archivesToManageMx);
 
 // /*
 //  * @brief The read tasks configuration thread

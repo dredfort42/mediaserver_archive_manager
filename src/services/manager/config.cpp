@@ -61,25 +61,37 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
 
     archiveManagerConfig.configPath = config->getConfigFile();
 
-    archiveManagerConfig.readerPath = config->getProperty("archive_manager.reader_path");
-    if (archiveManagerConfig.readerPath.empty())
+    archiveManagerConfig.archiveReaderPath = config->getProperty("archive_manager.reader_path");
+    if (archiveManagerConfig.archiveReaderPath.empty())
     {
         print(LogType::WARNING, "Reader path not defined, using default path: /app/reader");
-        archiveManagerConfig.readerPath = "/app/reader";
+        archiveManagerConfig.archiveReaderPath = "/app/reader";
     }
 
-    archiveManagerConfig.writerPath = config->getProperty("archive_manager.writer_path");
-    if (archiveManagerConfig.writerPath.empty())
+    archiveManagerConfig.archiveRecorderPath = config->getProperty("archive_manager.recorder_path");
+    if (archiveManagerConfig.archiveRecorderPath.empty())
     {
-        print(LogType::WARNING, "Writer path not defined, using default path: /app/writer");
-        archiveManagerConfig.writerPath = "/app/writer";
+        print(LogType::WARNING, "Recorder path not defined, using default path: /app/recorder");
+        archiveManagerConfig.archiveRecorderPath = "/app/recorder";
     }
 
-    archiveManagerConfig.archivePath = config->getProperty("archive_manager.archive_path");
-    if (archiveManagerConfig.archivePath.empty())
+    archiveManagerConfig.archiveStoragePath = config->getProperty("archive_manager.storage_path");
+    if (archiveManagerConfig.archiveStoragePath.empty())
     {
-        print(LogType::WARNING, "Archive path not defined, using default path: /app/archive");
-        archiveManagerConfig.archivePath = "/app/archive";
+        print(LogType::WARNING, "Archive storage path not defined, using default path: /app/storage");
+        archiveManagerConfig.archiveStoragePath = "/app/storage";
+    }
+
+    archiveManagerConfig.archiveFragmentLengthInSeconds = config->getProperty("archive_manager.fragment_length_in_seconds");
+    if (archiveManagerConfig.archiveFragmentLengthInSeconds.empty())
+    {
+        print(LogType::WARNING, "Archive fragment length not defined, using default value: 300 seconds");
+        archiveManagerConfig.archiveFragmentLengthInSeconds = "300";
+    }
+    if (std::stoi(archiveManagerConfig.archiveFragmentLengthInSeconds) <= 0)
+    {
+        print(LogType::WARNING, "Archive fragment length must be greater than 0, using default value: 300 seconds");
+        archiveManagerConfig.archiveFragmentLengthInSeconds = "300";
     }
 
     print(LogType::DEBUGER, "Archive Manager configuration readed");
