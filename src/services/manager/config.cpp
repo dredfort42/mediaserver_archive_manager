@@ -64,15 +64,27 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     archiveManagerConfig.archiveReaderPath = config->getProperty("archive_manager.reader_path");
     if (archiveManagerConfig.archiveReaderPath.empty())
     {
-        print(LogType::WARNING, "Reader path not defined, using default path: /app/reader");
+        print(LogType::WARNING, "Archive reader path not defined, using default path: /app/reader");
         archiveManagerConfig.archiveReaderPath = "/app/archive_reader";
+    }
+
+    if (!std::filesystem::exists(archiveManagerConfig.archiveReaderPath) || std::filesystem::is_directory(archiveManagerConfig.archiveReaderPath))
+    {
+        print(LogType::ERROR, "Archive reader path must be a path to an existing file");
+        exit(RTN_ERROR);
     }
 
     archiveManagerConfig.archiveRecorderPath = config->getProperty("archive_manager.recorder_path");
     if (archiveManagerConfig.archiveRecorderPath.empty())
     {
-        print(LogType::WARNING, "Recorder path not defined, using default path: /app/recorder");
+        print(LogType::WARNING, "Archive recorder path not defined, using default path: /app/recorder");
         archiveManagerConfig.archiveRecorderPath = "/app/archive_recorder";
+    }
+
+    if (!std::filesystem::exists(archiveManagerConfig.archiveRecorderPath) || std::filesystem::is_directory(archiveManagerConfig.archiveRecorderPath))
+    {
+        print(LogType::ERROR, "Archive recorder path must be a path to an existing file");
+        exit(RTN_ERROR);
     }
 
     archiveManagerConfig.archiveStoragePath = config->getProperty("archive_manager.storage_path");
@@ -84,7 +96,7 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
 
     if (!std::filesystem::is_directory(archiveManagerConfig.archiveStoragePath))
     {
-        print(LogType::ERROR, "Storage path must be a path to an existing directory");
+        print(LogType::ERROR, "Archive storage path must be a path to an existing directory");
         exit(RTN_ERROR);
     }
 
