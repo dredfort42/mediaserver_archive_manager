@@ -178,48 +178,48 @@ endif()
 
 install(TARGETS ${ARCHIVE_MANAGER_NAME} RUNTIME DESTINATION bin)
 
-# # ==============================================================================
-# # ARCHIVE WRITER executable
-# # ==============================================================================
-# set(ARCHIVE_WRITER_NAME archive_writer)
+# ==============================================================================
+# ARCHIVE RECORDER executable
+# ==============================================================================
+set(ARCHIVE_RECORDER_NAME archive_recorder)
 
-# add_executable(${ARCHIVE_WRITER_NAME}
-#     src/shared/logPrinter/logPrinter.cpp
-#     src/shared/configReader/configMap.cpp
-#     src/shared/chronoName/chronoName.cpp
-#     src/shared/frameParser/frameParser.cpp
-#     src/shared/messenger/messenger.cpp
-#     ${PROTO_SRCS}
-#     src/writer/thConsumer.cpp
-#     src/writer/thFileWriter.cpp
-#     src/writer/thSendOffset.cpp
-#     src/writer/main.cpp
-# )
+add_executable(${ARCHIVE_RECORDER_NAME}
+    src/shared/logPrinter/logPrinter.cpp
+    # src/shared/configReader/configMap.cpp
+    # src/shared/chronoName/chronoName.cpp
+    # src/shared/frameParser/frameParser.cpp
+    # src/shared/messenger/messenger.cpp
+    ${PROTO_SRCS}
+    # src/services/recorder/thConsumer.cpp
+    # src/services/recorder/thFileWriter.cpp
+    # src/services/recorder/thSendOffset.cpp
+    src/services/recorder/main.cpp
+)
 
-# target_link_libraries(${ARCHIVE_WRITER_NAME}
-#     PRIVATE
-#         common_compile_options
-#         common_includes
-#         ${FFMPEG_LIBRARIES}
-#         ${SWSCALE_LIBRARIES}
-# )
+target_link_libraries(${ARCHIVE_RECORDER_NAME}
+    PRIVATE
+        common_compile_options
+        common_includes
+        ${FFMPEG_LIBRARIES}
+        ${SWSCALE_LIBRARIES}
+)
 
-# if(MACOSX)
-#     target_link_libraries(${ARCHIVE_WRITER_NAME} PRIVATE
-#         ${RDKAFKA_LIBRARIES}
-#         ${PROTOBUF_LIBRARIES}
-#         absl_log_internal_check_op
-#         absl_log_internal_message
-#     )
-# else()
-#     target_link_libraries(${ARCHIVE_WRITER_NAME} PRIVATE
-#         rdkafka++
-#         rdkafka
-#         protobuf
-#     )
-# endif()
+if(MACOSX)
+    target_link_libraries(${ARCHIVE_RECORDER_NAME} PRIVATE
+        ${RDKAFKA_LIBRARIES}
+        ${PROTOBUF_LIBRARIES}
+        absl_log_internal_check_op
+        absl_log_internal_message
+    )
+else()
+    target_link_libraries(${ARCHIVE_RECORDER_NAME} PRIVATE
+        rdkafka++
+        rdkafka
+        protobuf
+    )
+endif()
 
-# install(TARGETS ${ARCHIVE_WRITER_NAME} RUNTIME DESTINATION bin)
+install(TARGETS ${ARCHIVE_RECORDER_NAME} RUNTIME DESTINATION bin)
 
 # # ==============================================================================
 # # ARCHIVE READER executable

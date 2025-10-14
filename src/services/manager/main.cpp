@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
 {
     print(ServiceStatus::STARTING);
 
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+
     signal(SIGINT, sigterm);
     signal(SIGTERM, sigterm);
 
@@ -151,6 +153,7 @@ int main(int argc, char *argv[])
 
     thConsumer.join();
     thCameras.join();
+    thRecorder.join();
     // thTasks.join();
     // thCamerasController.join();
     // thTasksController.join();
@@ -163,6 +166,7 @@ int main(int argc, char *argv[])
                          archiveManagerConfig,
                          serviceDigest);
 
+    google::protobuf::ShutdownProtobufLibrary();
     closeDatabase(dbConnect);
     closelog();
 

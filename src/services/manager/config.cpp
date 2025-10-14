@@ -65,14 +65,14 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     if (archiveManagerConfig.archiveReaderPath.empty())
     {
         print(LogType::WARNING, "Reader path not defined, using default path: /app/reader");
-        archiveManagerConfig.archiveReaderPath = "/app/reader";
+        archiveManagerConfig.archiveReaderPath = "/app/archive_reader";
     }
 
     archiveManagerConfig.archiveRecorderPath = config->getProperty("archive_manager.recorder_path");
     if (archiveManagerConfig.archiveRecorderPath.empty())
     {
         print(LogType::WARNING, "Recorder path not defined, using default path: /app/recorder");
-        archiveManagerConfig.archiveRecorderPath = "/app/recorder";
+        archiveManagerConfig.archiveRecorderPath = "/app/archive_recorder";
     }
 
     archiveManagerConfig.archiveStoragePath = config->getProperty("archive_manager.storage_path");
@@ -80,6 +80,12 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     {
         print(LogType::WARNING, "Archive storage path not defined, using default path: /app/storage");
         archiveManagerConfig.archiveStoragePath = "/app/storage";
+    }
+
+    if (!std::filesystem::is_directory(archiveManagerConfig.archiveStoragePath))
+    {
+        print(LogType::ERROR, "Storage path must be a path to an existing directory");
+        exit(RTN_ERROR);
     }
 
     archiveManagerConfig.archiveFragmentLengthInSeconds = config->getProperty("archive_manager.fragment_length_in_seconds");
@@ -171,21 +177,21 @@ DatabaseConfig getDatabaseConfig(ConfigMap *config)
     databaseConfig.dbName = config->getProperty("database.name");
     if (databaseConfig.dbName.empty())
     {
-        print(LogType::ERROR, "Database name not defined, using default value: archive_manager");
+        print(LogType::ERROR, "Database name not defined");
         exit(RTN_ERROR);
     }
 
     databaseConfig.user = config->getProperty("database.user");
     if (databaseConfig.user.empty())
     {
-        print(LogType::ERROR, "Database user not defined, using default value: archive_manager");
+        print(LogType::ERROR, "Database user not defined");
         exit(RTN_ERROR);
     }
 
     databaseConfig.password = config->getProperty("database.password");
     if (databaseConfig.password.empty())
     {
-        print(LogType::ERROR, "Database password not defined, using default value: archive_manager");
+        print(LogType::ERROR, "Database password not defined");
         exit(RTN_ERROR);
     }
 

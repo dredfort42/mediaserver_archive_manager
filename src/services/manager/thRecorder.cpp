@@ -123,7 +123,7 @@ void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
             // char *connectorConfig = strdup(("--config=" + archiveManagerConfig->configPath).c_str());
             // char *args[5] = {command, cameraUUID, url, connectorConfig, NULL};
 
-            char *command = strdup((archiveManagerConfig->archiveStoragePath).c_str());
+            char *command = strdup((archiveManagerConfig->archiveRecorderPath).c_str());
             char *cameraUUID = strdup(archive.second.getStreamUUID().c_str());
             char *archiveStoragePath = strdup(archiveManagerConfig->archiveStoragePath.c_str());
             char *fragmentLength = strdup(archiveManagerConfig->archiveFragmentLengthInSeconds.c_str());
