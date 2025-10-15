@@ -46,7 +46,10 @@ int main(int argc, char **argv)
     // }
 
     while (!isInterrupted)
-        sleep(1);
+    {
+        print(LogType::INFO, "Recording in progress :)")
+            sleep(1);
+    }
     // Messenger messenger(&isInterrupted);
     // ConfigMap config;
     // std::list<Messenger::packet_t> packets;
