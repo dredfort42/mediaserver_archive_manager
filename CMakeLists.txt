@@ -90,9 +90,9 @@ target_include_directories(common_includes INTERFACE
     "${CMAKE_SOURCE_DIR}/src/shared"
     # "${CMAKE_SOURCE_DIR}/src/shared/archiveTask"
     "${CMAKE_SOURCE_DIR}/src/shared/camera"
-    # "${CMAKE_SOURCE_DIR}/src/shared/chronoName"
+    "${CMAKE_SOURCE_DIR}/src/shared/chronoName"
     "${CMAKE_SOURCE_DIR}/src/shared/configReader"
-    # "${CMAKE_SOURCE_DIR}/src/shared/frameParser"
+    "${CMAKE_SOURCE_DIR}/src/shared/frameParser"
     "${CMAKE_SOURCE_DIR}/src/shared/logPrinter"
     "${CMAKE_SOURCE_DIR}/src/shared/messenger"
     # "${CMAKE_SOURCE_DIR}/src/shared/timeIntervalParser"
@@ -184,15 +184,18 @@ install(TARGETS ${ARCHIVE_MANAGER_NAME} RUNTIME DESTINATION bin)
 set(ARCHIVE_RECORDER_NAME archive_recorder)
 
 add_executable(${ARCHIVE_RECORDER_NAME}
+    src/shared/configReader/configMap.cpp
     src/shared/logPrinter/logPrinter.cpp
-    # src/shared/configReader/configMap.cpp
-    # src/shared/chronoName/chronoName.cpp
-    # src/shared/frameParser/frameParser.cpp
-    # src/shared/messenger/messenger.cpp
+    src/shared/messenger/messenger.cpp
+    src/shared/chronoName/chronoName.cpp
+    src/shared/frameParser/frameParser.cpp
     ${PROTO_SRCS}
-    # src/services/recorder/thConsumer.cpp
-    # src/services/recorder/thFileWriter.cpp
+    src/services/recorder/thConsumer.cpp
+    # src/services/recorder/thAVPacket.cpp
+    src/services/recorder/thFileWriter.cpp
     # src/services/recorder/thSendOffset.cpp
+    src/services/recorder/config.cpp
+    src/services/recorder/initMessenger.cpp
     src/services/recorder/main.cpp
 )
 

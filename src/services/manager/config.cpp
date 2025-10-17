@@ -42,7 +42,6 @@ std::string generateUUID()
     return hexstream.str();
 }
 
-std::string serviceUUID = generateUUID();
 std::string appVersion = "1.0.0";
 
 ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
@@ -56,8 +55,8 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
         archiveManagerConfig.appName = "mediaserver_archive_manager";
     }
 
+    archiveManagerConfig.appUUID = generateUUID();
     archiveManagerConfig.appVersion = appVersion;
-    archiveManagerConfig.appUUID = serviceUUID;
 
     archiveManagerConfig.configPath = config->getConfigFile();
 
@@ -85,31 +84,6 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     {
         print(LogType::ERROR, "Archive recorder path must be a path to an existing file");
         exit(RTN_ERROR);
-    }
-
-    archiveManagerConfig.archiveStoragePath = config->getProperty("archive_manager.storage_path");
-    if (archiveManagerConfig.archiveStoragePath.empty())
-    {
-        print(LogType::WARNING, "Archive storage path not defined, using default path: /app/storage");
-        archiveManagerConfig.archiveStoragePath = "/app/storage";
-    }
-
-    if (!std::filesystem::is_directory(archiveManagerConfig.archiveStoragePath))
-    {
-        print(LogType::ERROR, "Archive storage path must be a path to an existing directory");
-        exit(RTN_ERROR);
-    }
-
-    archiveManagerConfig.archiveFragmentLengthInSeconds = config->getProperty("archive_manager.fragment_length_in_seconds");
-    if (archiveManagerConfig.archiveFragmentLengthInSeconds.empty())
-    {
-        print(LogType::WARNING, "Archive fragment length not defined, using default value: 300 seconds");
-        archiveManagerConfig.archiveFragmentLengthInSeconds = "300";
-    }
-    if (std::stoi(archiveManagerConfig.archiveFragmentLengthInSeconds) <= 0)
-    {
-        print(LogType::WARNING, "Archive fragment length must be greater than 0, using default value: 300 seconds");
-        archiveManagerConfig.archiveFragmentLengthInSeconds = "300";
     }
 
     print(LogType::DEBUGER, "Archive Manager configuration readed");

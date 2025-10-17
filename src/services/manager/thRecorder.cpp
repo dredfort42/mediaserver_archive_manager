@@ -124,10 +124,9 @@ void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
             // char *args[5] = {command, cameraUUID, url, connectorConfig, NULL};
 
             char *command = strdup((archiveManagerConfig->archiveRecorderPath).c_str());
-            char *cameraUUID = strdup(archive.second.getStreamUUID().c_str());
-            char *archiveStoragePath = strdup(archiveManagerConfig->archiveStoragePath.c_str());
-            char *fragmentLength = strdup(archiveManagerConfig->archiveFragmentLengthInSeconds.c_str());
-            char *args[] = {command, cameraUUID, archiveStoragePath, fragmentLength, nullptr};
+            char *streamUUID = strdup(archive.second.getStreamUUID().c_str());
+            char *config = strdup(("--config=" + archiveManagerConfig->configPath).c_str());
+            char *args[] = {command, streamUUID, config, NULL};
 
             pid_t pid = fork();
 
@@ -145,9 +144,13 @@ void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
             }
 
             free(command);
-            free(cameraUUID);
-            free(archiveStoragePath);
-            free(fragmentLength);
+            free(streamUUID);
+            free(config);
+            // free(cameraUUID);
+            // free(archiveStoragePath);
+            // free(fragmentLength);
+            // if (getDebug())
+            //     free(debug);
 
             if (getDebug())
                 archive.second.printInfo();

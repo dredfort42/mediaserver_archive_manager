@@ -42,8 +42,8 @@ struct ArchiveManagerConfig
     std::string configPath;
     std::string archiveReaderPath;
     std::string archiveRecorderPath;
-    std::string archiveStoragePath;
-    std::string archiveFragmentLengthInSeconds;
+    // std::string archiveStoragePath;
+    // std::string archiveFragmentLengthInSeconds;
 };
 
 /*

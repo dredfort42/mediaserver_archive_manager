@@ -191,41 +191,32 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
     return 0;
 }
 
-// int Messenger::consumeMessages(std::list<Messenger::packet_t> *packets, const std::string topic)
-// {
-//     std::vector<std::string> topics_vector;
+int Messenger::consumeMessages(std::list<Messenger::packet_t> *packets, const std::string *topic)
+{
+    std::vector<std::string> topics_vector;
+    topics_vector.push_back(*topic);
 
-//     topics_vector.push_back(topic);
+    if (_consumer->subscribe(topics_vector) != RdKafka::ERR_NO_ERROR)
+    {
+        print(LogType::ERROR, "Failed to subscribe to topics");
+        return -1;
+    }
 
-//     if (_consumer->subscribe(topics_vector) != RdKafka::ERR_NO_ERROR)
-//     {
-//         print(LogType::ERROR, "Failed to subscribe to topics");
-//         return -1;
-//     }
+    std::string clusterID = _consumer->clusterid(1000);
 
-//     std::string clusterID = _consumer->clusterid(1000);
+    while (!*_isInterrupted)
+    {
+        RdKafka::Message *message = _consumer->consume(1000);
+        Messenger::message_t tmp = _consumeMessage(message);
 
-//     while (!*_isInterrupted)
-//     {
-//         RdKafka::Message *message = _consumer->consume(1000);
-//         Messenger::message_t tmp = _consumeMessage(message);
+        if (!tmp.first.empty())
+            packets->emplace_back(message->timestamp().timestamp, tmp.second);
 
-//         if (!tmp.first.empty())
-//             packets->emplace_back(message->timestamp().timestamp, tmp.second);
+        delete message;
+    }
 
-//         delete message;
-
-//         if (!clusterID.empty() && _consumer->clusterid(1000) != clusterID)
-//         {
-//             print(LogType::ERROR, "Cluster ID changed");
-//             *_isInterrupted = 1;
-//         }
-//         else if (clusterID.empty())
-//             clusterID = _consumer->clusterid(1000);
-//     }
-
-//     return 0;
-// }
+    return 0;
+}
 
 Messenger::message_t Messenger::_consumeMessage(RdKafka::Message *message)
 {

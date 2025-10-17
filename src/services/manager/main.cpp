@@ -21,8 +21,6 @@ int main(int argc, char *argv[])
     signal(SIGTERM, sigterm);
 
     ConfigMap config(argc, argv);
-    setDebug(config.getProperty("debug") == "true" || config.getProperty("debug") == "1");
-
     config.printConfiguration();
 
     ArchiveManagerConfig archiveManagerConfig = getArchiveManagerConfig(&config);

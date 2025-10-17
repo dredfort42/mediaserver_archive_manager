@@ -1,6 +1,7 @@
 #include "recorder.hpp"
 
 static volatile sig_atomic_t isInterrupted = 0;
+std::string logMessage = "";
 
 static void sigterm(int sig)
 {
@@ -11,48 +12,56 @@ static void sigterm(int sig)
 
 int main(int argc, char **argv)
 {
-    if (argc < 4)
+    if (argc < 3)
     {
         print(LogType::ERROR, "Incorrect startup parameters!");
-        print(LogType::ERROR, "Usage: ./writer <cameraUUID> <storagePath> <fragmentLengthInSeconds>");
-        return 1;
-    }
-    else if (!std::filesystem::is_directory(argv[2]))
-    {
-        print(LogType::ERROR, "Incorrect startup parameters!");
-        print(LogType::ERROR, "Usage: ./recorder <cameraUUID> <storagePath> <fragmentLengthInSeconds>");
-        print(LogType::ERROR, "ATTENTION! <storagePath> must be a path to an existing directory");
-        return 1;
+        print(LogType::ERROR, "Usage: ./archive_recorder <streamUUID> <--config=/path/to/my_config.ini>");
+        return RTN_ERROR;
     }
 
-    std::string cameraUUID = argv[1];
-    std::string storagePath = argv[2];
-    int fragmentLengthInSeconds = std::stoi(argv[3]);
+    std::string streamUUID = argv[1];
 
-    storagePath += "/" + cameraUUID;
+    logMessage = "RECORDER WITH PID " + std::to_string(getpid()) + " FOR STREAM WITH ID " + streamUUID + " ";
+
+    print(LogType::INFO, logMessage + "STARTING");
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     signal(SIGINT, sigterm);
     signal(SIGTERM, sigterm);
 
-    // if (DEBUG)
-    // {
-    LogTable table("/// RECORDER STARTED");
-    table.addRow("Stream UUID", cameraUUID);
-    table.addRow("Storage path", storagePath);
-    table.addRow("Fragment length", std::to_string(fragmentLengthInSeconds));
-    table.printLogTable(LogType::DEBUGER);
-    // }
+    print(LogType::DEBUGER, logMessage + "INITIALIZING");
 
-    while (!isInterrupted)
+    ConfigMap config(argc, argv);
+
+    RecorderConfig recorderConfig = getRecorderConfig(&config);
+    MessengerConfig messengerConfig = getMessengerConfig(&config);
+
+    openlog(recorderConfig.appName.c_str(), LOG_PID | LOG_CONS, LOG_USER);
+
+    LogTable table("/// RECORDER STARTED");
+    table.addRow("PID", std::to_string(getpid()));
+    table.addRow("Stream UUID", streamUUID);
+    table.addRow("Storage path", recorderConfig.storagePath);
+    table.addRow("Fragment length (seconds)", std::to_string(recorderConfig.fragmentLengthInSeconds));
+    table.printLogTable(LogType::DEBUGER);
+
+    Messenger messenger(&isInterrupted);
+    Messenger::topics_t topics;
+    // AVPacketBuffer avPackets;
+
+    std::string err = initMessenger(messenger, messengerConfig, recorderConfig.appUUID);
+    if (!err.empty())
     {
-        print(LogType::INFO, "Recording in progress :)")
-            sleep(1);
+        print(LogType::ERROR, err);
+        return RTN_ERROR;
     }
-    // Messenger messenger(&isInterrupted);
-    // ConfigMap config;
-    // std::list<Messenger::packet_t> packets;
+
+    std::list<Messenger::packet_t> avPackets;
+    std::thread thConsumer(consumeAVPackets,
+                           &messenger,
+                           &avPackets,
+                           &streamUUID);
 
     // int configurationError = 0;
 
@@ -79,18 +88,31 @@ int main(int argc, char **argv)
     //                        &packets,
     //                        cameraUUID);
 
-    // std::thread thFileWriter(fileWriter,
-    //                          &messenger,
-    //                          config.getProperty("kafka.topic.compact.clean.hour.fileOffsets"),
-    //                          cameraUUID,
-    //                          &packets,
-    //                          storagePath,
-    //                          fragmentLengthInSeconds);
+    std::string cameraUUID = streamUUID.substr(0, streamUUID.find('_'));
+
+    std::thread thFileWriter(writeAVPacketsToFile,
+                             &messenger,
+                             &messengerConfig.topicIFrameByteOffsets,
+                             &cameraUUID,
+                             &avPackets,
+                             &recorderConfig.storagePath,
+                             &recorderConfig.fragmentLengthInSeconds);
+
+    // -----
+    while (!isInterrupted)
+    {
+        print(LogType::DEBUGER, "Recorder for " + cameraUUID + " has AVPacket queue size: " + std::to_string(avPackets.size()));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
     // thConsumer.join();
-    // thFileWriter.join();
 
-    // google::protobuf::ShutdownProtobufLibrary();
+    thConsumer.join();
+    thFileWriter.join();
+    // thAVPacket.join();
+
+    google::protobuf::ShutdownProtobufLibrary();
+    closelog();
 
     print(LogType::WARNING, "Writer process with pid " + std::to_string(getpid()) + " stopped successfully");
     return 0;

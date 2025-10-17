@@ -176,13 +176,13 @@ public:
      */
     int consumeMessages(messenger_content_t *messages, const topics_t *topics);
 
-    // /*
-    //  * @brief Consume messages from a particular topic and add all of them to a list
-    //  * @param packets The packets list to consume in format key: timestamp value: payload
-    //  * @param topic The topic to consume from
-    //  * @return 0 on success, -1 on failure
-    //  */
-    // int consumeMessages(std::list<packet_t> *packets, const std::string topic);
+    /*
+     * @brief Consume messages with avpackets from a particular topic and add all of them to a list
+     * @param packets The packets list to consume in format key: timestamp value: payload
+     * @param topic The topic to consume from
+     * @return 0 on success, -1 on failure
+     */
+    int consumeMessages(std::list<packet_t> *packets, const std::string *topic);
 
     /*
      * @brief Get the interrupt signal variable
