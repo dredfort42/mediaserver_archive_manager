@@ -47,6 +47,13 @@ void writeAVPacketsToFile(Messenger *messenger,
             //                              offset,
             //                              std::atoi(filePath.c_str()),
             //                              std::atoi(currentFileName.c_str()));
+            // sendOffset(*messenger,
+            //            *topicForOffsets,
+            //            *cameraUUID,
+            //            packet.first,
+            //            offset,
+            //            std::atoi(filePath.c_str()),
+            //            std::atoi(currentFileName.c_str()));
             fileName = std::to_string(ChronoName::getFileName(avPackets->front().first, *fragmentLengthInSeconds));
             //     thSendOffset.detach();
         }
