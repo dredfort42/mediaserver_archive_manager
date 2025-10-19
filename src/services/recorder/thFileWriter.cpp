@@ -39,6 +39,9 @@ void writeAVPacketsToFile(Messenger *messenger,
 
         if (iFrame)
         {
+            // TODO: add offset to separate structure and send it in a separate thread
+            // START FROM THIS POINT ON MONDAY
+
             //     std::thread thSendOffset(sendOffset,
             //                              messenger,
             //                              topicForOffsets,
@@ -47,6 +50,7 @@ void writeAVPacketsToFile(Messenger *messenger,
             //                              offset,
             //                              std::atoi(filePath.c_str()),
             //                              std::atoi(currentFileName.c_str()));
+
             // sendOffset(*messenger,
             //            *topicForOffsets,
             //            *cameraUUID,
