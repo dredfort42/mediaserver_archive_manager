@@ -88,9 +88,9 @@ std::string initMessenger(Messenger &messenger,
  * @param folder The folder name
  * @param file The file name
  */
-void produceOffset(Messenger &messenger,
-                   std::string &topic,
-                   std::string cameraUUID,
+void produceOffset(Messenger *messenger,
+                   std::string *topic,
+                   std::string *cameraUUID,
                    int64_t timestamp,
                    int64_t offset,
                    int folder,

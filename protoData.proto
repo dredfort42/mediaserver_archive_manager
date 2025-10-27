@@ -186,10 +186,19 @@ message ProtoCameraStreamParameters {
  * Camera Stream Codecs Structure *
  **********************************/
 
-// Kafka topic: camera_stream_codecs
-// Key for Kafka message: ${StreamType}_${MediaType}
-// - StreamType: main/sub
-// - MediaType: audio/video/data/subtitles/attachment
+/**
+ * Camera Stream Codecs Entry
+ * Topic settings:
+ * - cleanup.policy=compact,delete \
+ * - retention.ms=60000 \
+ * - segment.ms=6000 \
+ * - min.cleanable.dirty.ratio=0.01
+ * ---
+ * Kafka topic: camera_stream_codecs
+ * Key for Kafka message: ${StreamType}_${MediaType}
+ * - StreamType: main/sub
+ * - MediaType: audio/video/data/subtitles/attachment
+ */
 message ProtoCameraStreamCodecs {
     /**
      * General type of the encoded data.
@@ -498,14 +507,18 @@ message ProtoPacket {
     int32 time_base_den = 14;
 }
 
-// // // Kafka topic: kafka.topic.compact.offsets
-// // // Key for Kafka message:  Camera UUID
-// // message ProtoOffset {
-// //     int64 timestamp = 1;
-// //     int64 offset = 2;
-// //     int32 folder = 3;
-// //     int32 file = 4;
-// // }
+
+/***********************************************
+* This structure describes the camera control. *
+************************************************/
+// Kafka topic: kafka.topic.compact.offsets
+// Key for Kafka message:  Camera UUID
+message ProtoOffset {
+    int64 timestamp = 1;
+    int64 offset = 2;
+    int32 folder = 3;
+    int32 file = 4;
+}
 
 // // // Kafka topic: kafka.topic.compact.tasks
 // // // Key for Kafka message:  Task UUID
