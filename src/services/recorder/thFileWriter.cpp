@@ -135,7 +135,7 @@ void produceOffset(Messenger *messenger,
                    int folder,
                    int file)
 {
-    print(LogType::DEBUGER, ">>> Start send offset thread");
+    // print(LogType::DEBUGER, ">>> Start send offset thread");
 
     proto::ProtoOffset protoOffset;
     protoOffset.set_timestamp(timestamp);
@@ -149,5 +149,5 @@ void produceOffset(Messenger *messenger,
     messenger->produceMessage(*topic, *cameraUUID, offsetString);
 
     print(LogType::DEBUGER, "Send offset: " + std::to_string(offset) + " for timestamp: " + std::to_string(timestamp));
-    print(LogType::DEBUGER, "<<< Stop send offset thread");
+    // print(LogType::DEBUGER, "<<< Stop send offset thread");
 }
