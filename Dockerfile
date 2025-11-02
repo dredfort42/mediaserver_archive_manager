@@ -16,7 +16,7 @@ RUN apt-get install -y \
     libpqxx-dev \
     libpq-dev
 
-RUN rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/**
 
 FROM env
 

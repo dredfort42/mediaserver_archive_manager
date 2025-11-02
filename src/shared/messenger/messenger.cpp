@@ -162,8 +162,9 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
     {
         if (messages->find(topic) == messages->end())
             messages->insert(Messenger::topic_messages_t(topic, Messenger::messages_map_t()));
-        else
-            messages->at(topic) = Messenger::messages_map_t();
+        // Don't clear existing topic data - other threads may be using it
+        // else
+        //     messages->at(topic) = Messenger::messages_map_t();
     }
 
     while (!*_isInterrupted)
@@ -173,15 +174,32 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
 
         if (!tmp.first.empty())
         {
-            Messenger::messages_map_t *topicMessages = &messages->at(message->topic_name());
+            // Safely get the topic - it should exist since we initialized all topics above
+            std::string topicName = message->topic_name();
+            auto topicIt = messages->find(topicName);
 
-            if (topicMessages->find(tmp.first) == topicMessages->end())
-                topicMessages->insert(std::pair<std::string, MxMessage>(tmp.first, MxMessage(tmp.second)));
+            if (topicIt == messages->end())
+            {
+                // Received message from unexpected topic - skip it
+                print(LogType::WARNING, "Received message from unexpected topic: " + topicName);
+                delete message;
+                continue;
+            }
+
+            Messenger::messages_map_t *topicMessages = &topicIt->second;
+
+            auto msgIt = topicMessages->find(tmp.first);
+            if (msgIt == topicMessages->end())
+            {
+                // Insert new message
+                topicMessages->emplace(std::piecewise_construct,
+                                       std::forward_as_tuple(tmp.first),
+                                       std::forward_as_tuple(tmp.second));
+            }
             else
             {
-                topicMessages->at(tmp.first).mutex.lock();
-                topicMessages->at(tmp.first).message = tmp.second;
-                topicMessages->at(tmp.first).mutex.unlock();
+                // Update existing message - no mutex needed now, just overwrite
+                msgIt->second.message = tmp.second;
             }
         }
 

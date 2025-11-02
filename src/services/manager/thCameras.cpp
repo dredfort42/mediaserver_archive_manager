@@ -150,7 +150,16 @@ void readCameras(volatile sig_atomic_t *isInterrupted,
 
     while (!*isInterrupted)
     {
-        Messenger::messages_map_t *messages = &messengerContent->at(camerasTopic);
+        // Safely check if topic still exists before accessing it
+        auto topicIt = messengerContent->find(camerasTopic);
+        if (topicIt == messengerContent->end())
+        {
+            print(LogType::WARNING, "Cameras topic disappeared, waiting...");
+            waitingForCamerasData(isInterrupted, messengerContent, camerasTopic);
+            continue;
+        }
+
+        Messenger::messages_map_t *messages = &topicIt->second;
 
         for (auto it = messages->begin(); !*isInterrupted && it != messages->end();)
         {

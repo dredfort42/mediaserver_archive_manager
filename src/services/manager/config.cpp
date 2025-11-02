@@ -188,6 +188,13 @@ DatabaseConfig getDatabaseConfig(ConfigMap *config)
         databaseConfig.sslMode = "disable";
     }
 
+    databaseConfig.table_iframe_byte_offsets = config->getProperty("database.table_iframe_byte_offsets");
+    if (databaseConfig.table_iframe_byte_offsets.empty())
+    {
+        print(LogType::DEBUGER, "Database table for iframe byte offsets not defined, using default value: iframe_byte_offsets");
+        databaseConfig.table_iframe_byte_offsets = "iframe_byte_offsets";
+    }
+
     print(LogType::DEBUGER, "Database configuration readed");
 
     return databaseConfig;

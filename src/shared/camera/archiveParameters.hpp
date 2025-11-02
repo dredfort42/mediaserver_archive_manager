@@ -15,7 +15,7 @@
 #define CONNECTION_TYPE_ACTIVE_ON_DEMAND 1
 #define CONNECTION_TYPE_ACTIVE_PERMANENT 8
 
-/*
+/**
  * @brief The archive class
  */
 class ArchiveParameters

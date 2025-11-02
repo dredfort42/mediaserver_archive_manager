@@ -31,7 +31,7 @@ namespace ArchiveManagerConstants
     constexpr int STATE_POST_INTERVAL_MS = 10 * 1000;
 }
 
-/*
+/**
  * @brief The archive manager configuration
  */
 struct ArchiveManagerConfig
@@ -46,14 +46,14 @@ struct ArchiveManagerConfig
     // std::string archiveFragmentLengthInSeconds;
 };
 
-/*
+/**
  * @brief Get the archive manager configuration
  * @param config The configuration map
  * @return The archive manager configuration
  */
 ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config);
 
-/*
+/**
  * @brief The PostgreSQL database configuration
  */
 struct DatabaseConfig
@@ -64,30 +64,38 @@ struct DatabaseConfig
     std::string user;
     std::string password;
     std::string sslMode;
+    std::string table_iframe_byte_offsets;
 };
 
-/*
+/**
  * @brief Get the database configuration
  * @param config The configuration map
  * @return The database configuration
  */
 DatabaseConfig getDatabaseConfig(ConfigMap *config);
 
-/*
- * @brief Initialize the database
- * @param dbConnect The database connection
+/**
+ * @brief Initialize the database and return a PGconn* (or nullptr on failure)
  * @param dbConfig The database configuration
- * @return The error message or empty string if success
+ * @return PGconn* connection pointer (nullptr on failure)
  */
-std::string initDatabase(PGconn *dbConnect, DatabaseConfig dbConfig);
+PGconn *initDatabase(DatabaseConfig dbConfig);
 
-/*
+/**
  * @brief Close the database connection
  * @param dbConnect The database connection
  */
 void closeDatabase(PGconn *dbConnect);
 
-/*
+/**
+ * @brief Check if a table exists in the database
+ * @param dbConnect The database connection
+ * @param tableName The name of the table to check
+ * @return true if the table exists, false otherwise
+ */
+bool isTableExists(PGconn *dbConnect, const std::string &tableName);
+
+/**
  * @brief The Messenger configuration
  */
 struct MessengerConfig
@@ -105,14 +113,14 @@ struct MessengerConfig
     std::string topicIFrameByteOffsets;
 };
 
-/*
+/**
  * @brief Get the messenger configuration
  * @param config The configuration map
  * @return The messenger configuration
  */
 MessengerConfig getMessengerConfig(ConfigMap *config);
 
-/*
+/**
  * @brief Initialize the messenger
  * @param messenger The messenger
  * @param messengerConfig The messenger configuration
@@ -125,7 +133,7 @@ std::string initMessenger(Messenger &messenger,
                           Messenger::topics_t &topics,
                           std::string &appUUID);
 
-/*
+/**
  * @brief Produce service state
  * @param messenger The messenger
  * @param topic The topic for the message the service state
@@ -137,7 +145,7 @@ void produceServiceDigest(Messenger &messenger,
                           const ArchiveManagerConfig &archiveManagerConfig,
                           ServiceStatus statusCode);
 
-/*
+/**
  * @brief The Kafka consumer thread
  * @param messenger The messenger
  * @param messengerContent The messenger content
@@ -149,7 +157,7 @@ void consumeMessages(Messenger *messenger,
 
 // ---
 
-// /*
+// /**
 //  * @brief The struct that matches the JSON camera entry structure
 //  */
 // struct Entry
@@ -162,7 +170,7 @@ void consumeMessages(Messenger *messenger,
 //     int Archive;
 // };
 
-// /*
+// /**
 //  * @brief The specialization of the nlohmann::adl_serializer for the Entry struct
 //  */
 // namespace nlohmann
@@ -191,7 +199,7 @@ void consumeMessages(Messenger *messenger,
 //     };
 // }
 
-// /*
+// /**
 //  * @brief The Kafka consumer thread
 //  * @param wasInrerrupted The flag to stop the thread
 //  * @param messengerContent The messenger content
@@ -203,7 +211,7 @@ void consumeMessages(Messenger *messenger,
 //                      Messenger::topics_t *topics,
 //                      ConfigMap *config);
 
-/*
+/**
  * @brief The read cameras configuration thread
  * @param isInterrupted The flag to stop the thread
  * @param messengerContent The messenger content
@@ -217,7 +225,7 @@ void readCameras(volatile sig_atomic_t *isInterrupted,
                  std::map<std::string, ArchiveParameters> *streamsToArchive,
                  std::mutex *streamsToArchiveMx);
 
-/*
+/**
  * @brief The recording controller thread
  * @param isInterrupted The flag to stop the thread
  * @param serviceDigest The service status code
@@ -231,7 +239,7 @@ void recorderController(volatile sig_atomic_t *isInterrupted,
                         std::map<std::string, ArchiveParameters> *archivesToManage,
                         std::mutex *archivesToManageMx);
 
-// /*
+// /**
 //  * @brief The read tasks configuration thread
 //  * @param wasInrerrupted The flag to stop the thread
 //  * @param dbConnect The connection to PostgreSQL
@@ -248,7 +256,7 @@ void recorderController(volatile sig_atomic_t *isInterrupted,
 //                uint *currentTasksQueueSize,
 //                ConfigMap *config);
 
-// /*
+// /**
 //  * @brief The control cameras workers thread
 //  * @param wasInrerrupted The flag to stop the thread
 //  * @param cameras The cameras map
@@ -256,7 +264,7 @@ void recorderController(volatile sig_atomic_t *isInterrupted,
 // void controlCamerasWorkers(volatile sig_atomic_t *wasInrerrupted,
 //                            std::map<std::string, Camera> *cameras);
 
-// /*
+// /**
 //  * @brief The control tasks workers thread
 //  * @param wasInrerrupted The flag to stop the thread
 //  * @param tasks The tasks map
@@ -266,16 +274,18 @@ void recorderController(volatile sig_atomic_t *isInterrupted,
 //                          std::map<std::string, ArchiveTask> *tasks,
 //                          uint *currentTasksQueueSize);
 
-// /*
-//  * @brief The store offsets in database thread
-//  * @param wasInrerrupted The flag to stop the thread
-//  * @param dbConnect The connection to PostgreSQL
-//  * @param messengerContent The messenger content
-//  * @param config The configuration map
-//  */
-// void storeOffsets(volatile sig_atomic_t *wasInrerrupted,
-//                   PGconn *dbConnect,
-//                   Messenger::messenger_content_t *messengerContent,
-//                   ConfigMap *postgresConfig);
+/**
+ * @brief The store offsets in database thread
+ * @param isInrerrupted The flag to stop the thread
+ * @param dbConnect The connection to PostgreSQL
+ * @param messengerContent The messenger content
+ * @param offsetsTopic The offsets topic name
+ * @param dbTable The database table name
+ */
+void storeOffsets(volatile sig_atomic_t *isInrerrupted,
+                  PGconn *dbConnect,
+                  Messenger::messenger_content_t *messengerContent,
+                  std::string *offsetsTopic,
+                  std::string *dbTable);
 
 #endif // MANAGER_HPP

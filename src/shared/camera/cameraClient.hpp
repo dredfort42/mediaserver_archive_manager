@@ -17,7 +17,7 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 
-/*
+/**
  * @brief The codec struct
  */
 struct Codec
@@ -57,7 +57,7 @@ struct Codec
     int seekPreroll;
 };
 
-/*
+/**
  * @brief The camera client class
  */
 class CameraClient
@@ -76,7 +76,7 @@ private:
 
     CameraClient();
 
-    /*
+    /**
      * @brief Define codec context
      */
     void _defineCodecContext(int streamIndex);
@@ -92,7 +92,7 @@ public:
 
     ~CameraClient();
 
-    /*
+    /**
      * @brief Set connection parameter
      * @param key Parameter key
      * @param value Parameter value
@@ -100,49 +100,49 @@ public:
      */
     int setConnectionParameter(const char *key, const char *value);
 
-    /*
+    /**
      * @brief Connect to camera
      * @param timeout Timeout before trying to connect again
      */
     void connectToCamera(int timeout);
 
-    /*
+    /**
      * @brief Get camera CameraUUID
      * @return Stream CameraUUID
      */
     std::string getStreamUUID();
 
-    /*
+    /**
      * @brief Get camera URL
      * @return Stream URL
      */
     int getVideoStreamIndex();
 
-    /*
+    /**
      * @brief Get audio stream index
      * @return Audio stream index
      */
     int getAudioStreamIndex();
 
-    /*
+    /**
      * @brief Get data stream index
      * @return Data stream index
      */
     int getDataStreamIndex();
 
-    /*
+    /**
      * @brief Get subtitle stream index
      * @return Subtitle stream index
      */
     int getSubtitleStreamIndex();
 
-    /*
+    /**
      * @brief Get attachment stream index
      * @return Attachment stream index
      */
     int getAttachmentStreamIndex();
 
-    /*
+    /**
      * @brief Get codec information
      * @param streamIndex Stream index
      * @return Codec

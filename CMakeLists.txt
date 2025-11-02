@@ -143,7 +143,7 @@ add_executable(${ARCHIVE_MANAGER_NAME}
     src/services/manager/thCameras.cpp
     src/services/manager/thRecorder.cpp
     # src/services/manager/thController.cpp
-    # src/services/manager/thDatabase.cpp
+    src/services/manager/thDatabase.cpp
     # src/services/manager/thReader.cpp
 	src/services/manager/config.cpp
 	src/services/manager/initMessenger.cpp

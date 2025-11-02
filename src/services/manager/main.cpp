@@ -46,17 +46,31 @@ int main(int argc, char *argv[])
         return RTN_ERROR;
     }
 
-    PGconn *dbConnect = nullptr;
+    print(LogType::INFO, "Connected to Kafka brokers: " + messengerConfig.brokers);
 
-    error = initDatabase(dbConnect, databaseConfig);
-    if (!error.empty())
+    PGconn *dbConnect = initDatabase(databaseConfig);
+    if (dbConnect == nullptr)
     {
         print(ServiceStatus::ERROR);
-        print(LogType::ERROR, error);
+        print(LogType::ERROR, "Connection to database failed");
         print(ServiceStatus::STOPPING);
         print(ServiceStatus::STOPPED);
         return RTN_ERROR;
     }
+
+    print(LogType::INFO, "Connected to database: " + databaseConfig.dbName);
+
+    if (!isTableExists(dbConnect, databaseConfig.table_iframe_byte_offsets))
+    {
+        print(ServiceStatus::ERROR);
+        print(LogType::ERROR, "Required table '" + databaseConfig.table_iframe_byte_offsets + "' does not exist in database");
+        print(ServiceStatus::STOPPING);
+        print(ServiceStatus::STOPPED);
+        closeDatabase(dbConnect);
+        return RTN_ERROR;
+    }
+
+    print(LogType::INFO, "Required table '" + databaseConfig.table_iframe_byte_offsets + "' exists in database");
 
     produceServiceDigest(messenger,
                          messengerConfig.topicSystemDigest,
@@ -78,6 +92,13 @@ int main(int argc, char *argv[])
                            &archiveManagerConfig,
                            &archivesToManage,
                            &archivesToManageMx);
+
+    std::thread thDatabase(storeOffsets,
+                           &isInterrupted,
+                           dbConnect,
+                           &messengerContent,
+                           &messengerConfig.topicIFrameByteOffsets,
+                           &databaseConfig.table_iframe_byte_offsets);
 
     //---
 
@@ -116,12 +137,6 @@ int main(int argc, char *argv[])
     //                               &tasks,
     //                               &currentTasksQueueSize);
 
-    // std::thread thDatabse(storeOffsets,
-    //                       &wasInrerrupted,
-    //                       dbConnect,
-    //                       &messengerContent,
-    //                       &config);
-
     // print(LogType::WARNING, "Archive process with pid " + std::to_string(getpid()) + " stopped successfully");
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -152,10 +167,11 @@ int main(int argc, char *argv[])
     thConsumer.join();
     thCameras.join();
     thRecorder.join();
+    thDatabase.join();
+
     // thTasks.join();
     // thCamerasController.join();
     // thTasksController.join();
-    // thDatabase.join();
 
     serviceDigest = ServiceStatus::STOPPED;
     print(serviceDigest);

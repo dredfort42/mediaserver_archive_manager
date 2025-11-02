@@ -35,7 +35,7 @@ struct RecorderConfig
     int fragmentLengthInSeconds;
 };
 
-/*
+/**
  * @brief Get the recorder configuration
  * @param config The configuration map
  * @return The recorder configuration
@@ -44,7 +44,7 @@ RecorderConfig getRecorderConfig(ConfigMap *config);
 
 // ----
 
-/*
+/**
  * @brief The Messenger configuration
  */
 struct MessengerConfig
@@ -60,14 +60,14 @@ struct MessengerConfig
     std::string topicIFrameByteOffsets;
 };
 
-/*
+/**
  * @brief Get the messenger configuration
  * @param config The configuration map
  * @return The messenger configuration
  */
 MessengerConfig getMessengerConfig(ConfigMap *config);
 
-/*
+/**
  * @brief Initialize the messenger
  * @param messenger The messenger
  * @param messengerConfig The messenger configuration
@@ -78,7 +78,7 @@ std::string initMessenger(Messenger &messenger,
                           MessengerConfig &messengerConfig,
                           std::string &appUUID);
 
-/*
+/**
  * @brief The offset producer function
  * @param messenger The messenger object
  * @param topic The topic to produce file offsets
@@ -96,7 +96,7 @@ void produceOffset(Messenger *messenger,
                    int folder,
                    int file);
 
-/*
+/**
  * @brief The Kafka AVPackets consumer thread
  * @param messenger The messenger
  * @param avPackets The list of AV packets
@@ -106,7 +106,7 @@ void consumeAVPackets(Messenger *messenger,
                       std::list<Messenger::packet_t> *avPackets,
                       std::string *topic);
 
-/*
+/**
  * @brief The file writer thread
  * @param messenger The messenger object
  * @param topic The topic to produce file offsets

@@ -16,7 +16,7 @@
 #define BLUE "\033[1;34m"
 #define RESET "\033[0m"
 
-/*
+/**
  * @brief The service state
  */
 enum class ServiceStatus : int
@@ -31,19 +31,19 @@ enum class ServiceStatus : int
     ERROR = 107
 };
 
-/*
+/**
  * @brief Set the debug mode
  * @param debug The debug mode
  */
 void setDebug(bool debug);
 
-/*
+/**
  * @brief Get the debug mode
  * @return The debug mode
  */
 bool getDebug();
 
-/*
+/**
  * @brief The type of log
  */
 enum class LogType
@@ -54,20 +54,20 @@ enum class LogType
     ERROR
 };
 
-/*
+/**
  * @brief Prints a message with a log type
  * @param type The log type
  * @param message The message to print
  */
 void print(const LogType &type, const std::string &message);
 
-/*
+/**
  * @brief Prints a message
  * @param message The message to print
  */
 void print(const std::string &message);
 
-/*
+/**
  * @brief Prints a message with a service state label
  * @param state The service state
  */
@@ -91,20 +91,20 @@ public:
 
     ~LogTable() {}
 
-    /*
+    /**
      * @brief Set the header of the log table
      * @param header The header of the log table
      */
     void setHeader(const std::string &header);
 
-    /*
+    /**
      * @brief Add a row to the log table
      * @param key The key of the row
      * @param value The value of the row
      */
     void addRow(const std::string &key, const std::string &value);
 
-    /*
+    /**
      * @brief Print the log table
      * @param logType The log type
      */
