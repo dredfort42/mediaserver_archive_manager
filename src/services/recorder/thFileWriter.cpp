@@ -80,10 +80,55 @@ void writeAVPacketsToFile(Messenger *messenger,
 
             currentFileName = fileName;
             filePath = std::to_string(ChronoName::getDaysSinceEpoch(avPackets->front().first));
-            std::filesystem::create_directories(*storagePath + "/" + *cameraUUID + "/" + filePath);
+            std::filesystem::path dir = *storagePath + "/" + *cameraUUID + "/" + filePath;
+            std::filesystem::create_directories(dir);
 
-            avFile = std::ofstream(*storagePath + "/" + *cameraUUID + "/" + filePath + "/" + currentFileName, std::ios::binary | std::ios::app);
-            jsonFile = std::ofstream(*storagePath + "/" + *cameraUUID + "/" + filePath + "/" + currentFileName + ".json", std::ios::binary | std::ios::app);
+            // set grants for all (rwx for owner, group and others -> 0777)
+            try
+            {
+                std::filesystem::permissions(dir,
+                                             std::filesystem::perms::owner_all |
+                                                 std::filesystem::perms::group_all |
+                                                 std::filesystem::perms::others_all,
+                                             std::filesystem::perm_options::replace);
+            }
+            catch (const std::filesystem::filesystem_error &e)
+            {
+                print(LogType::ERROR, std::string("Failed to set permissions for ") + dir.string() + ": " + e.what());
+            }
+
+            std::filesystem::path avPath = std::filesystem::path(*storagePath) / *cameraUUID / filePath / currentFileName;
+            avFile = std::ofstream(avPath, std::ios::binary | std::ios::app);
+
+            try
+            {
+                std::filesystem::permissions(avPath,
+                                             std::filesystem::perms::owner_all |
+                                                 std::filesystem::perms::group_all |
+                                                 std::filesystem::perms::others_all,
+                                             std::filesystem::perm_options::replace);
+            }
+            catch (const std::filesystem::filesystem_error &e)
+            {
+                print(LogType::ERROR, std::string("Failed to set permissions for file ") + avPath.string() + ": " + e.what());
+            }
+
+            std::filesystem::path jsonPath = avPath;
+            jsonPath += ".json";
+            jsonFile = std::ofstream(jsonPath, std::ios::binary | std::ios::app);
+
+            try
+            {
+                std::filesystem::permissions(jsonPath,
+                                             std::filesystem::perms::owner_all |
+                                                 std::filesystem::perms::group_all |
+                                                 std::filesystem::perms::others_all,
+                                             std::filesystem::perm_options::replace);
+            }
+            catch (const std::filesystem::filesystem_error &e)
+            {
+                print(LogType::ERROR, std::string("Failed to set permissions for file ") + jsonPath.string() + ": " + e.what());
+            }
 
             if (jsonFile.is_open())
                 jsonFile << "[\n";
