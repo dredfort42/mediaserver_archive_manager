@@ -1,8 +1,8 @@
 #include "manager.hpp"
 
-Messenger::messages_map_t *getOffsetsTopic(volatile sig_atomic_t *isInrerrupted,
-                                           std::string *offsetsTopic,
-                                           Messenger::messenger_content_t *messengerContent)
+ThreadSafeMessagesMap *getOffsetsTopic(volatile sig_atomic_t *isInrerrupted,
+                                       std::string *offsetsTopic,
+                                       Messenger::messenger_content_t *messengerContent)
 {
     while (!*isInrerrupted)
     {
@@ -24,62 +24,104 @@ void storeOffsets(volatile sig_atomic_t *isInrerrupted,
 {
     print(LogType::DEBUGER, ">>> Start store offsets thread");
 
-    Messenger::messages_map_t *offsetsTopicMessages = getOffsetsTopic(isInrerrupted, offsetsTopic, messengerContent);
+    ThreadSafeMessagesMap *offsetsTopicMessages = getOffsetsTopic(isInrerrupted, offsetsTopic, messengerContent);
+
+    if (offsetsTopicMessages == nullptr)
+    {
+        print(LogType::ERROR, "Failed to get offsets topic");
+        return;
+    }
 
     while (!*isInrerrupted)
     {
         std::cout << "***\tWaiting for offsets..." << std::endl;
 
-        if (offsetsTopicMessages->begin() != offsetsTopicMessages->end())
+        // Safely extract ONE message at a time
+        std::string cameraUUID;
+        std::string messageData;
+        bool hasMessage = false;
+
+        // Critical section: grab and remove the first message with proper locking
         {
-            // Get the first message and copy it out
-            auto it = offsetsTopicMessages->begin();
-            Messenger::message_t message;
-            message.first = it->first;
-            message.second = it->second.message;
+            std::lock_guard<std::mutex> mapLock(offsetsTopicMessages->mapMutex);
 
-            // Erase the message from the map
-            offsetsTopicMessages->erase(it);
+            auto &messagesMap = offsetsTopicMessages->map;
 
-            std::string cameraUUID = message.first;
-            proto::ProtoOffset protoOffset;
-
-            std::cout << "***\tParsing offset..." << std::endl;
-            protoOffset.ParseFromString(message.second);
-
-            if (cameraUUID.empty() ||
-                protoOffset.folder() <= 0 ||
-                protoOffset.file() <= 0 ||
-                protoOffset.timestamp() <= 0 ||
-                protoOffset.offset() <= 0)
+            if (!messagesMap.empty())
             {
-                print(LogType::DEBUGER, "Offset from " + cameraUUID + " is empty or invalid");
-                continue;
+                auto it = messagesMap.begin();
+                cameraUUID = it->first;
+
+                // Lock the individual message mutex to read its content
+                {
+                    std::lock_guard<std::mutex> msgLock(it->second.mutex);
+                    messageData = it->second.message;
+                }
+
+                // Remove the message from the map
+                messagesMap.erase(it);
+                hasMessage = true;
             }
-
-            std::string query = "INSERT INTO public." + *dbTable + " (camera_id, folder, file, iframe_indexes) VALUES ('" +
-                                cameraUUID + "', " +
-                                std::to_string(protoOffset.folder()) + ", " +
-                                std::to_string(protoOffset.file()) + ", " +
-                                "ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index]) " +
-                                "ON CONFLICT (camera_id, folder, file) DO UPDATE SET " +
-                                "iframe_indexes = " + *dbTable + ".iframe_indexes || ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index];";
-
-            PGresult *res;
-        sendOffset:
-            res = PQexec(dbConnect, query.c_str());
-            if (!*isInrerrupted && PQresultStatus(res) != PGRES_COMMAND_OK)
-            {
-                print(LogType::ERROR, "Add data to table failed: " + std::string(PQerrorMessage(dbConnect)));
-                goto sendOffset;
-            }
-
-            print(LogType::DEBUGER, "Offset from " + cameraUUID + " for " + std::to_string(protoOffset.timestamp()) + " was sent to DB");
-
-            protoOffset.Clear();
         }
-        else
+
+        if (!hasMessage)
+        {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            continue;
+        }
+
+        // Now process outside the critical section
+        proto::ProtoOffset protoOffset;
+
+        std::cout << "***\tParsing offset..." << std::endl;
+        if (!protoOffset.ParseFromString(messageData))
+        {
+            print(LogType::ERROR, "Failed to parse protobuf message from " + cameraUUID);
+            continue;
+        }
+
+        // Skip offsets older than 5 minutes
+        auto currentTime = std::chrono::system_clock::now();
+        auto currentTimestamp = std::chrono::duration_cast<std::chrono::seconds>(currentTime.time_since_epoch()).count();
+        std::cout << "***\tCurrent timestamp: " << currentTimestamp << std::endl;
+
+        auto offsetAge = currentTimestamp - protoOffset.timestamp() / 1000;
+        if (offsetAge > 300) // 5 minutes = 300 seconds
+        {
+            print(LogType::DEBUGER, "Skipping offset from " + cameraUUID + " - too old (age: " + std::to_string(offsetAge) + " seconds)");
+            continue;
+        }
+
+        if (cameraUUID.empty() ||
+            protoOffset.folder() <= 0 ||
+            protoOffset.file() <= 0 ||
+            protoOffset.timestamp() <= 0 ||
+            protoOffset.offset() <= 0)
+        {
+            print(LogType::DEBUGER, "Offset from " + cameraUUID + " is empty or invalid");
+            continue;
+        }
+
+        std::string query = "INSERT INTO public." + *dbTable + " (camera_id, folder, file, iframe_indexes) VALUES ('" +
+                            cameraUUID + "', " +
+                            std::to_string(protoOffset.folder()) + ", " +
+                            std::to_string(protoOffset.file()) + ", " +
+                            "ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index]) " +
+                            "ON CONFLICT (camera_id, folder, file) DO UPDATE SET " +
+                            "iframe_indexes = " + *dbTable + ".iframe_indexes || ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index];";
+
+        PGresult *res;
+    sendOffset:
+        res = PQexec(dbConnect, query.c_str());
+        if (!*isInrerrupted && PQresultStatus(res) != PGRES_COMMAND_OK)
+        {
+            print(LogType::ERROR, "Add data to table failed: " + std::string(PQerrorMessage(dbConnect)));
+            PQclear(res);
+            goto sendOffset;
+        }
+        PQclear(res);
+
+        print(LogType::DEBUGER, "Offset from " + cameraUUID + " for " + std::to_string(protoOffset.timestamp()) + " was sent to DB");
     }
 
     print(LogType::DEBUGER, "<<< Stop store offsets thread");

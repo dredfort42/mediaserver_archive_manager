@@ -20,22 +20,50 @@ namespace MessengerConstants
     constexpr int TIMEOUT_MS = 1000;
 }
 
-/**
- * @brief Simple message wrapper without mutex
- * The mutex protection is now at the map level, not per-message
+/*
+ * @brief The message with mutex st
+ * @param message The message with key and value
+ * @param mutex The mutex for the message
  */
 struct MxMessage
 {
     std::string message;
+    std::mutex mutex;
 
-    MxMessage(std::string msg) : message(msg) {}
+    MxMessage(std::string message) : message(message) {}
 
-    MxMessage(const MxMessage &) = default;
-    MxMessage &operator=(const MxMessage &) = default;
-    MxMessage(MxMessage &&) noexcept = default;
-    MxMessage &operator=(MxMessage &&) noexcept = default;
+    MxMessage(const MxMessage &mxMessage)
+    {
+        message = mxMessage.message;
+    }
 
-    ~MxMessage() = default;
+    MxMessage &operator=(const MxMessage &mxMessage)
+    {
+        message = mxMessage.message;
+        return *this;
+    }
+
+    ~MxMessage() {};
+
+private:
+    MxMessage() {};
+};
+
+/*
+ * @brief Thread-safe wrapper for messages map
+ * @param map The messages map
+ * @param mapMutex The mutex protecting map structure operations (insert/erase/iterate)
+ */
+struct ThreadSafeMessagesMap
+{
+    std::map<std::string, MxMessage> map;
+    std::mutex mapMutex;
+
+    ThreadSafeMessagesMap() {}
+
+    // Delete copy constructor and assignment to prevent issues with mutex
+    ThreadSafeMessagesMap(const ThreadSafeMessagesMap &) = delete;
+    ThreadSafeMessagesMap &operator=(const ThreadSafeMessagesMap &) = delete;
 };
 
 class Messenger
@@ -80,14 +108,14 @@ public:
     /**
      * @brief The topics content type
      */
-    typedef typename std::pair<std::string, messages_map_t> topic_messages_t;
+    typedef typename std::pair<std::string, ThreadSafeMessagesMap> topic_messages_t;
 
     /**
      * @brief All messages in different topics
      * @param first The topic name
-     * @param second The messages map in the topic
+     * @param second The thread-safe messages map in the topic
      */
-    typedef typename std::map<std::string, messages_map_t> messenger_content_t;
+    typedef typename std::map<std::string, ThreadSafeMessagesMap> messenger_content_t;
 
 private:
     volatile sig_atomic_t *_isInterrupted;
@@ -149,7 +177,7 @@ public:
      */
     int produceMessage(const std::string &topic, const std::string &key, const std::string &value);
 
-    // /**
+    // /*
     //  * @brief Produce service state
     //  * @param state The service state code to produce
     //  * @param message The error message to produce if state is an error
@@ -157,7 +185,7 @@ public:
     //  */
     // int produceServiceDigest(int state, std::string &error_message);
 
-    /**
+    /*
      * @brief Consume a messages from a topics and add last of them to a map
      * @param messages The messages map to consume
      * @param topics The topics to consume from
@@ -166,7 +194,7 @@ public:
     int consumeMessages(messenger_content_t *messages, const topics_t *topics);
 
     /**
-     * @brief Consume messages with avpackets from a particular topic and add all of them to a list
+     * @brief Consume messages from a particular topic and add all of them to a list
      * @param packets The packets list to consume in format key: timestamp value: payload
      * @param topic The topic to consume from
      * @return 0 on success, -1 on failure

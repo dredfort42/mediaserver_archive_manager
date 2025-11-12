@@ -161,10 +161,12 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
     for (auto topic : *topics)
     {
         if (messages->find(topic) == messages->end())
-            messages->insert(Messenger::topic_messages_t(topic, Messenger::messages_map_t()));
-        // Don't clear existing topic data - other threads may be using it
-        // else
-        //     messages->at(topic) = Messenger::messages_map_t();
+        {
+            // Use emplace or piecewise_construct to create ThreadSafeMessagesMap in place
+            messages->emplace(std::piecewise_construct,
+                              std::forward_as_tuple(topic),
+                              std::forward_as_tuple());
+        }
     }
 
     while (!*_isInterrupted)
@@ -174,32 +176,30 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
 
         if (!tmp.first.empty())
         {
-            // Safely get the topic - it should exist since we initialized all topics above
             std::string topicName = message->topic_name();
+
+            // Find the topic in the map
             auto topicIt = messages->find(topicName);
-
-            if (topicIt == messages->end())
+            if (topicIt != messages->end())
             {
-                // Received message from unexpected topic - skip it
-                print(LogType::WARNING, "Received message from unexpected topic: " + topicName);
-                delete message;
-                continue;
-            }
+                // Lock the map mutex for structure operations
+                std::lock_guard<std::mutex> mapLock(topicIt->second.mapMutex);
 
-            Messenger::messages_map_t *topicMessages = &topicIt->second;
+                auto &topicMessages = topicIt->second.map;
 
-            auto msgIt = topicMessages->find(tmp.first);
-            if (msgIt == topicMessages->end())
-            {
-                // Insert new message
-                topicMessages->emplace(std::piecewise_construct,
-                                       std::forward_as_tuple(tmp.first),
-                                       std::forward_as_tuple(tmp.second));
-            }
-            else
-            {
-                // Update existing message - no mutex needed now, just overwrite
-                msgIt->second.message = tmp.second;
+                // Check if message key exists
+                auto msgIt = topicMessages.find(tmp.first);
+                if (msgIt == topicMessages.end())
+                {
+                    // Insert new message
+                    topicMessages.insert(std::pair<std::string, MxMessage>(tmp.first, MxMessage(tmp.second)));
+                }
+                else
+                {
+                    // Update existing message (with message-level lock)
+                    std::lock_guard<std::mutex> msgLock(msgIt->second.mutex);
+                    msgIt->second.message = tmp.second;
+                }
             }
         }
 
@@ -208,7 +208,6 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
 
     return 0;
 }
-
 int Messenger::consumeMessages(std::list<Messenger::packet_t> *packets, const std::string *topic)
 {
     std::vector<std::string> topics_vector;
@@ -216,11 +215,11 @@ int Messenger::consumeMessages(std::list<Messenger::packet_t> *packets, const st
 
     if (_consumer->subscribe(topics_vector) != RdKafka::ERR_NO_ERROR)
     {
-        print(LogType::ERROR, "Failed to subscribe to topics");
+        print(LogType::ERROR, "Failed to subscribe to topic " + *topic);
         return -1;
     }
 
-    std::string clusterID = _consumer->clusterid(1000);
+    packets->clear();
 
     while (!*_isInterrupted)
     {

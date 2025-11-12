@@ -159,15 +159,26 @@ void readCameras(volatile sig_atomic_t *isInterrupted,
             continue;
         }
 
-        Messenger::messages_map_t *messages = &topicIt->second;
+        // Lock the map mutex to safely iterate and modify
+        std::lock_guard<std::mutex> mapLock(topicIt->second.mapMutex);
+        Messenger::messages_map_t *messages = &topicIt->second.map;
 
         for (auto it = messages->begin(); !*isInterrupted && it != messages->end();)
         {
-            if (!it->second.message.empty())
-            {
-                CameraArchiveInfo CAI = getCameraArchiveInfo(it->first, it->second.message);
+            std::string cameraUUID = it->first;
+            std::string messageData;
 
-                print(LogType::DEBUGER, "Processing archive for camera with UUID: " + it->first);
+            // Lock the individual message mutex to read its content
+            {
+                std::lock_guard<std::mutex> msgLock(it->second.mutex);
+                messageData = it->second.message;
+            }
+
+            if (!messageData.empty())
+            {
+                CameraArchiveInfo CAI = getCameraArchiveInfo(cameraUUID, messageData);
+
+                print(LogType::DEBUGER, "Processing archive for camera with UUID: " + cameraUUID);
 
                 if (CAI.statusCode == CONNECTION_STATUS_CODE_OFF || CAI.archive.getArchiveRetentionDays() == 0)
                     removeArchiveFromMap(archivesToManage, archivesToManageMx, &CAI.archive);

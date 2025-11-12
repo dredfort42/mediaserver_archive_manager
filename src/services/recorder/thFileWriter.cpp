@@ -156,7 +156,6 @@ void writeAVPacketsToFile(Messenger *messenger,
         // table.addRow("Offset", std::to_string(offset));
         // table.printLogTable(LogType::DEBUGER);
 
-        protoPacket.Clear();
         avPackets->pop_front();
     }
 

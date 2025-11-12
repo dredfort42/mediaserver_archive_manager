@@ -7,7 +7,7 @@ std::string initMessenger(Messenger &messenger, MessengerConfig &messengerConfig
     configurationError += messenger.setConfigurationProperty(Messenger::ClientType::BOTH, "client.id", messengerConfig.clientId + "_" + appUUID);
     configurationError += messenger.setConfigurationProperty(Messenger::ClientType::CONSUMER, "group.id", messengerConfig.groupId + "_" + appUUID);
     configurationError += messenger.setConfigurationProperty(Messenger::ClientType::CONSUMER, "enable.auto.commit", "false");
-    configurationError += messenger.setConfigurationProperty(Messenger::ClientType::CONSUMER, "auto.offset.reset", "earliest");
+    configurationError += messenger.setConfigurationProperty(Messenger::ClientType::CONSUMER, "auto.offset.reset", "latest");
     configurationError += messenger.setConfigurationProperty(Messenger::ClientType::CONSUMER, "enable.partition.eof", "true");
     configurationError += messenger.setConfigurationProperty(Messenger::ClientType::CONSUMER, "enable.auto.offset.store", "false");
 
