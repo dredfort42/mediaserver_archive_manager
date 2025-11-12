@@ -57,12 +57,12 @@ void storeOffsets(volatile sig_atomic_t *isInrerrupted,
                 continue;
             }
 
-            std::string query = "INSERT INTO public." + *dbTable + " (stream_uuid, folder, file, iframe_indexes) VALUES ('" +
+            std::string query = "INSERT INTO public." + *dbTable + " (camera_id, folder, file, iframe_indexes) VALUES ('" +
                                 cameraUUID + "', " +
                                 std::to_string(protoOffset.folder()) + ", " +
                                 std::to_string(protoOffset.file()) + ", " +
                                 "ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index]) " +
-                                "ON CONFLICT (stream_uuid, folder, file) DO UPDATE SET " +
+                                "ON CONFLICT (camera_id, folder, file) DO UPDATE SET " +
                                 "iframe_indexes = " + *dbTable + ".iframe_indexes || ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index];";
 
             PGresult *res;
