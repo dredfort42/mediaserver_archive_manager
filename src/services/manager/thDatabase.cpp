@@ -63,17 +63,32 @@ void storeOffsets(volatile sig_atomic_t *isInterrupted,
                                     "iframe_indexes = " + *dbTable + ".iframe_indexes || ARRAY[(" + std::to_string(protoOffset.timestamp()) + ", " + std::to_string(protoOffset.offset()) + ")::iframe_index];";
 
                 PGresult *res;
+                int retryCount = 0;
+                const int maxRetries = 5;
+                const int retryDelayMs = 1000;
+
             sendOffset:
                 res = PQexec(dbConnect, query.c_str());
                 if (!*isInterrupted && PQresultStatus(res) != PGRES_COMMAND_OK)
                 {
                     print(LogType::ERROR, "Add data to table failed: " + std::string(PQerrorMessage(dbConnect)));
                     PQclear(res);
-                    goto sendOffset;
+                    retryCount++;
+                    if (retryCount < maxRetries && !*isInterrupted)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
+                        goto sendOffset;
+                    }
+                    else
+                    {
+                        print(LogType::ERROR, "Failed to insert offset after " + std::to_string(maxRetries) + " retries, skipping");
+                    }
                 }
-                PQclear(res);
-
-                print(LogType::DEBUGER, "Offset from " + cameraID + " for " + std::to_string(protoOffset.timestamp()) + " was sent to DB");
+                else
+                {
+                    PQclear(res);
+                    print(LogType::DEBUGER, "Offset from " + cameraID + " for " + std::to_string(protoOffset.timestamp()) + " was sent to DB");
+                }
             }
 
             it = messages->erase(it);

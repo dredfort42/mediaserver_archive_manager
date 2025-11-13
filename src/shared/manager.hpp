@@ -239,6 +239,28 @@ void recorderController(volatile sig_atomic_t *isInterrupted,
                         std::map<std::string, ArchiveParameters> *archivesToManage,
                         std::mutex *archivesToManageMx);
 
+/**
+ * @brief Start recording for new archives
+ * @param archivesToManage The map of archives that should be recording
+ * @param controlledArchives The map of archives currently being recorded
+ * @param archiveManagerConfig The archive manager configuration
+ * @param archivesToManageMx The mutex for the archivesToManage map
+ */
+void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
+                    std::map<std::string, ArchiveParameters> *controlledArchives,
+                    ArchiveManagerConfig *archiveManagerConfig,
+                    std::mutex *archivesToManageMx);
+
+/**
+ * @brief Stop recording for archives no longer needed
+ * @param archivesToManage The map of archives that should be recording
+ * @param controlledArchives The map of archives currently being recorded
+ * @param archivesToManageMx The mutex for the archivesToManage map
+ */
+void stopRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
+                   std::map<std::string, ArchiveParameters> *controlledArchives,
+                   std::mutex *archivesToManageMx);
+
 // /**
 //  * @brief The read tasks configuration thread
 //  * @param wasInrerrupted The flag to stop the thread

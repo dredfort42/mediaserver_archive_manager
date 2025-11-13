@@ -58,9 +58,11 @@ int main(int argc, char **argv)
     }
 
     std::list<Messenger::packet_t> avPackets;
+    std::mutex avPacketsMutex;
     std::thread thConsumer(consumeAVPackets,
                            &messenger,
                            &avPackets,
+                           &avPacketsMutex,
                            &streamUUID);
 
     // int configurationError = 0;
@@ -95,13 +97,19 @@ int main(int argc, char **argv)
                              &messengerConfig.topicIFrameByteOffsets,
                              &cameraUUID,
                              &avPackets,
+                             &avPacketsMutex,
                              &recorderConfig.storagePath,
                              &recorderConfig.fragmentLengthInSeconds);
 
     // -----
     while (!isInterrupted)
     {
-        print(LogType::DEBUGER, "Recorder for " + cameraUUID + " has AVPacket queue size: " + std::to_string(avPackets.size()));
+        size_t queueSize;
+        {
+            std::lock_guard<std::mutex> lock(avPacketsMutex);
+            queueSize = avPackets.size();
+        }
+        print(LogType::DEBUGER, "Recorder for " + cameraUUID + " has AVPacket queue size: " + std::to_string(queueSize));
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 

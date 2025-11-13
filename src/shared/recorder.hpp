@@ -101,10 +101,12 @@ void produceOffset(Messenger *messenger,
  * @brief The Kafka AVPackets consumer thread
  * @param messenger The messenger
  * @param avPackets The list of AV packets
+ * @param avPacketsMutex The mutex protecting the avPackets list
  * @param topic The topic to consume
  */
 void consumeAVPackets(Messenger *messenger,
                       std::list<Messenger::packet_t> *avPackets,
+                      std::mutex *avPacketsMutex,
                       std::string *topic);
 
 /**
@@ -113,6 +115,7 @@ void consumeAVPackets(Messenger *messenger,
  * @param topic The topic to produce file offsets
  * @param cameraUUID The camera UUID
  * @param packets The list of consumed packets
+ * @param avPacketsMutex The mutex protecting the avPackets list
  * @param storagePath The path to the storage
  * @param fragmentLengthInSeconds The length of the fragment in seconds
  */
@@ -120,6 +123,7 @@ void writeAVPacketsToFile(Messenger *messenger,
                           std::string *topic,
                           std::string *cameraUUID,
                           std::list<Messenger::packet_t> *avPackets,
+                          std::mutex *avPacketsMutex,
                           std::string *storagePath,
                           int *fragmentLengthInSeconds);
 

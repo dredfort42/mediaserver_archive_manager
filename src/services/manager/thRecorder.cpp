@@ -111,20 +111,17 @@
 
 void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
                     std::map<std::string, ArchiveParameters> *controlledArchives,
-                    ArchiveManagerConfig *archiveManagerConfig)
+                    ArchiveManagerConfig *archiveManagerConfig,
+                    std::mutex *archivesToManageMx)
 {
+    std::lock_guard<std::mutex> lock(*archivesToManageMx);
 
-    for (auto archive : *archivesToManage)
-        if (controlledArchives->find(archive.first) == controlledArchives->end())
+    for (const auto &archiveEntry : *archivesToManage)
+    {
+        if (controlledArchives->find(archiveEntry.first) == controlledArchives->end())
         {
-            // char *command = strdup((archiveManagerConfig->connectorPath).c_str());
-            // char *cameraUUID = strdup(archive.second.getStreamUUID().c_str());
-            // char *url = strdup(archive.second.getRTSPURL().c_str());
-            // char *connectorConfig = strdup(("--config=" + archiveManagerConfig->configPath).c_str());
-            // char *args[5] = {command, cameraUUID, url, connectorConfig, NULL};
-
             char *command = strdup((archiveManagerConfig->archiveRecorderPath).c_str());
-            char *streamUUID = strdup(archive.second.getStreamUUID().c_str());
+            char *streamUUID = strdup(archiveEntry.second.getStreamUUID().c_str());
             char *config = strdup(("--config=" + archiveManagerConfig->configPath).c_str());
             char *args[] = {command, streamUUID, config, NULL};
 
@@ -134,36 +131,46 @@ void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
             {
             case -1:
                 print(LogType::ERROR, "Error creating recorder process...");
+                free(command);
+                free(streamUUID);
+                free(config);
                 break;
             case 0:
+                // Child process: execvp replaces process image, no need to free
                 if (execvp(command, args) == -1)
-                    print(LogType::ERROR, "Error executing recorder process... " + archive.second.getStreamUUID());
+                {
+                    print(LogType::ERROR, "Error executing recorder process... " + archiveEntry.second.getStreamUUID());
+                    _exit(EXIT_FAILURE); // Use _exit in child after fork
+                }
                 break;
             default:
-                archive.second.setPID(pid);
+                // Parent process: free resources and update PID
+                free(command);
+                free(streamUUID);
+                free(config);
+
+                // Create new archive entry with PID set
+                ArchiveParameters archiveWithPID = archiveEntry.second;
+                archiveWithPID.setPID(pid);
+
+                if (getDebug())
+                    archiveWithPID.printInfo();
+
+                controlledArchives->insert(std::pair<std::string, ArchiveParameters>(archiveWithPID.getStreamUUID(), archiveWithPID));
+
+                print(LogType::DEBUGER, "Recording started: " + archiveWithPID.getStreamUUID());
+                break;
             }
-
-            free(command);
-            free(streamUUID);
-            free(config);
-            // free(cameraUUID);
-            // free(archiveStoragePath);
-            // free(fragmentLength);
-            // if (getDebug())
-            //     free(debug);
-
-            if (getDebug())
-                archive.second.printInfo();
-
-            controlledArchives->insert(std::pair<std::string, ArchiveParameters>(archive.second.getStreamUUID(), archive.second));
-
-            print(LogType::DEBUGER, "Recording started: " + archive.second.getStreamUUID());
         }
+    }
 }
 
 void stopRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
-                   std::map<std::string, ArchiveParameters> *controlledArchives)
+                   std::map<std::string, ArchiveParameters> *controlledArchives,
+                   std::mutex *archivesToManageMx)
 {
+    std::lock_guard<std::mutex> lock(*archivesToManageMx);
+
     for (auto it = controlledArchives->begin(); it != controlledArchives->end();)
     {
         if (it->second.getPID() && archivesToManage->find(it->first) == archivesToManage->end())
@@ -188,14 +195,18 @@ void recorderController(volatile sig_atomic_t *isInterrupted,
 
     print(LogType::DEBUGER, ">>> Start archive recorder controller thread");
 
-    std::map<std::string, ArchiveParameters> controlledArchives = *archivesToManage;
+    std::map<std::string, ArchiveParameters> controlledArchives;
+    {
+        std::lock_guard<std::mutex> lock(*archivesToManageMx);
+        controlledArchives = *archivesToManage;
+    }
 
     while (!*isInterrupted)
     {
         *serviceDigest = ServiceStatus::READY;
 
-        stopRecording(archivesToManage, &controlledArchives);
-        startRecording(archivesToManage, &controlledArchives, archiveManagerConfig);
+        stopRecording(archivesToManage, &controlledArchives, archivesToManageMx);
+        startRecording(archivesToManage, &controlledArchives, archiveManagerConfig, archivesToManageMx);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(ArchiveManagerConstants::DELAY_MS));
     }

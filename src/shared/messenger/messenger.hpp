@@ -32,14 +32,19 @@ struct MxMessage
 
     MxMessage(std::string message) : message(message) {}
 
-    MxMessage(const MxMessage &mxMessage)
-    {
-        message = mxMessage.message;
-    }
+    // Delete copy constructor and assignment to prevent race conditions
+    // Mutex cannot be safely copied while potentially locked
+    MxMessage(const MxMessage &) = delete;
+    MxMessage &operator=(const MxMessage &) = delete;
 
-    MxMessage &operator=(const MxMessage &mxMessage)
+    // Allow move operations for efficiency
+    MxMessage(MxMessage &&other) noexcept : message(std::move(other.message)) {}
+    MxMessage &operator=(MxMessage &&other) noexcept
     {
-        message = mxMessage.message;
+        if (this != &other)
+        {
+            message = std::move(other.message);
+        }
         return *this;
     }
 
@@ -100,12 +105,14 @@ public:
      */
     typedef typename std::map<std::string, messages_map_t> messenger_content_t;
 
+    // Public for friend functions that need direct access
+    RdKafka::KafkaConsumer *_consumer;
+
 private:
     volatile sig_atomic_t *_isInterrupted;
     RdKafka::Conf *_confProducer;
     RdKafka::Conf *_confConsumer;
     RdKafka::Producer *_producer;
-    RdKafka::KafkaConsumer *_consumer;
     std::string _errstr;
 
     Messenger();
@@ -117,6 +124,13 @@ private:
      * @param message The message for processing
      */
     message_t _consumeMessage(RdKafka::Message *message);
+
+    /**
+     * @brief Safely extract message key (handles null keys)
+     * @param message The message to extract key from
+     * @return The key as string, or empty string if null
+     */
+    std::string _getMessageKey(RdKafka::Message *message);
 
 public:
     /**

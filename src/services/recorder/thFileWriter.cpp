@@ -4,6 +4,7 @@ void writeAVPacketsToFile(Messenger *messenger,
                           std::string *topicForOffsets,
                           std::string *cameraUUID,
                           std::list<Messenger::packet_t> *avPackets,
+                          std::mutex *avPacketsMutex,
                           std::string *storagePath,
                           int *fragmentLengthInSeconds)
 {
@@ -18,19 +19,32 @@ void writeAVPacketsToFile(Messenger *messenger,
 
     while (!*messenger->getInterruptSignal())
     {
+        Messenger::packet_t packet;
+        bool hasPacket = false;
 
-        if (avPackets->empty())
+        {
+            std::lock_guard<std::mutex> lock(*avPacketsMutex);
+            if (avPackets->empty())
+            {
+                // Release lock before sleeping
+            }
+            else if (!avPackets->front().second.empty())
+            {
+                packet = avPackets->front();
+                avPackets->pop_front();
+                hasPacket = true;
+            }
+            else
+            {
+                avPackets->pop_front();
+            }
+        }
+
+        if (!hasPacket)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(ArchiveRecorderConstants::DELAY_MS_WHEN_NO_AVPACKETS));
             continue;
         }
-
-        Messenger::packet_t packet;
-
-        if (!avPackets->front().second.empty())
-            packet = avPackets->front();
-        else
-            continue;
 
         proto::ProtoPacket protoPacket;
         protoPacket.ParseFromString(packet.second);
@@ -61,7 +75,7 @@ void writeAVPacketsToFile(Messenger *messenger,
                           std::atoi(filePath.c_str()),
                           std::atoi(currentFileName.c_str()));
 
-            fileName = std::to_string(ChronoName::getFileName(avPackets->front().first, *fragmentLengthInSeconds));
+            fileName = std::to_string(ChronoName::getFileName(packet.first, *fragmentLengthInSeconds));
         }
 
         if (currentFileName != fileName && iFrame)
@@ -79,7 +93,7 @@ void writeAVPacketsToFile(Messenger *messenger,
             }
 
             currentFileName = fileName;
-            filePath = std::to_string(ChronoName::getDaysSinceEpoch(avPackets->front().first));
+            filePath = std::to_string(ChronoName::getDaysSinceEpoch(packet.first));
             std::filesystem::path dir = *storagePath + "/" + *cameraUUID + "/" + filePath;
             std::filesystem::create_directories(dir);
 
@@ -139,7 +153,7 @@ void writeAVPacketsToFile(Messenger *messenger,
 
         if (iFrame && jsonFile.is_open())
             jsonFile << "\t{\n"
-                     << "\t\t\"timestamp\":\"" << avPackets->front().first << "\",\n"
+                     << "\t\t\"timestamp\":\"" << packet.first << "\",\n"
                      << "\t\t\"offset\":\"" << offset << "\",\n"
                      << "\t\t\"path\":\"" << filePath + "/" + currentFileName << "\""
                      << "\n\t}";
@@ -155,8 +169,6 @@ void writeAVPacketsToFile(Messenger *messenger,
         // table.addRow("File", currentFileName);
         // table.addRow("Offset", std::to_string(offset));
         // table.printLogTable(LogType::DEBUGER);
-
-        avPackets->pop_front();
     }
 
     if (jsonFile.is_open())

@@ -235,7 +235,7 @@ Messenger::message_t Messenger::_consumeMessage(RdKafka::Message *message)
         return message_t("", "");
 
     case RdKafka::ERR_NO_ERROR:
-        return message_t(message->key()->c_str(), std::string(static_cast<const char *>(message->payload()), message->len()));
+        return message_t(_getMessageKey(message), std::string(static_cast<const char *>(message->payload()), message->len()));
 
     case RdKafka::ERR__PARTITION_EOF:
         print(LogType::DEBUGER, "Reached end of partition");
@@ -251,6 +251,13 @@ Messenger::message_t Messenger::_consumeMessage(RdKafka::Message *message)
         *_isInterrupted = 1;
         return message_t("", "");
     }
+}
+
+std::string Messenger::_getMessageKey(RdKafka::Message *message)
+{
+    if (message->key() && message->key_len() > 0)
+        return std::string(message->key()->c_str());
+    return "";
 }
 
 volatile sig_atomic_t *Messenger::getInterruptSignal()
