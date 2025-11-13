@@ -27,10 +27,17 @@ CameraClient::~CameraClient()
     if (codecContext)
         avcodec_free_context(&codecContext);
 
-    avformat_close_input(&formatContext);
-    avio_context_free(&avioContext);
-    avformat_free_context(formatContext);
-    av_dict_free(&_connectionParameters);
+    if (formatContext)
+    {
+        avformat_close_input(&formatContext);
+        // avformat_close_input already frees formatContext, no need to call avformat_free_context
+    }
+
+    if (avioContext)
+        avio_context_free(&avioContext);
+
+    if (_connectionParameters)
+        av_dict_free(&_connectionParameters);
 
     if (_codec)
         delete[] _codec;
@@ -48,6 +55,12 @@ int CameraClient::setConnectionParameter(const char *key, const char *value)
 
 void CameraClient::connectToCamera(int timeout)
 {
+    if (!formatContext)
+    {
+        print(LogType::ERROR, _streamUUID + " | formatContext is null, cannot connect");
+        return;
+    }
+
     int attemps = 0;
     bool success = false;
 
@@ -68,6 +81,7 @@ void CameraClient::connectToCamera(int timeout)
         if (avformat_find_stream_info(formatContext, nullptr) < 0)
         {
             print(LogType::ERROR, _streamUUID + " | Can't find the stream information");
+            avformat_close_input(&formatContext);
             attemps++;
             continue;
         }
@@ -103,6 +117,7 @@ void CameraClient::connectToCamera(int timeout)
         if (_videoStreamIndex == -1)
         {
             print(LogType::ERROR, _streamUUID + " | Can't find the video stream");
+            avformat_close_input(&formatContext);
             attemps++;
             continue;
         }
@@ -154,6 +169,18 @@ Codec CameraClient::getCodec(int streamIndex)
 
 void CameraClient::_defineCodecContext(int streamIndex)
 {
+    if (streamIndex < 0 || streamIndex >= (int)nbStreams)
+    {
+        print(LogType::ERROR, _streamUUID + " | Invalid stream index: " + std::to_string(streamIndex));
+        return;
+    }
+
+    // Check if codec for this stream was already defined
+    if (_codec[streamIndex].codecType != -1)
+    {
+        return; // Already defined, skip to avoid memory leak
+    }
+
     AVCodecParameters *codecParameters = formatContext->streams[streamIndex]->codecpar;
     const AVCodec *codec = avcodec_find_decoder(codecParameters->codec_id);
 
@@ -163,25 +190,25 @@ void CameraClient::_defineCodecContext(int streamIndex)
         return;
     }
 
-    codecContext = avcodec_alloc_context3(codec);
+    AVCodecContext *tempCodecContext = avcodec_alloc_context3(codec);
 
-    if (!codecContext)
+    if (!tempCodecContext)
     {
         print(LogType::ERROR, _streamUUID + " | Can't allocate the codec context");
         return;
     }
 
-    if (avcodec_parameters_to_context(codecContext, codecParameters) < 0)
+    if (avcodec_parameters_to_context(tempCodecContext, codecParameters) < 0)
     {
         print(LogType::ERROR, _streamUUID + " | Can't copy codec parameters to codec context");
-        avcodec_free_context(&codecContext);
+        avcodec_free_context(&tempCodecContext);
         return;
     }
 
-    if (avcodec_open2(codecContext, codec, nullptr) < 0)
+    if (avcodec_open2(tempCodecContext, codec, nullptr) < 0)
     {
         print(LogType::ERROR, _streamUUID + " | Can't open the codec");
-        avcodec_free_context(&codecContext);
+        avcodec_free_context(&tempCodecContext);
         return;
     }
 
@@ -192,7 +219,8 @@ void CameraClient::_defineCodecContext(int streamIndex)
     codecInfo.extradata = codecParameters->extradata;
     codecInfo.extradataSize = codecParameters->extradata_size;
     codecInfo.format = codecParameters->format;
-    codecInfo.formatName = std::string(av_get_pix_fmt_name((AVPixelFormat)codecParameters->format));
+    const char *formatName = av_get_pix_fmt_name((AVPixelFormat)codecParameters->format);
+    codecInfo.formatName = formatName ? std::string(formatName) : "unknown";
     codecInfo.bitRate = codecParameters->bit_rate;
     codecInfo.bitsPerCodedSample = codecParameters->bits_per_coded_sample;
     codecInfo.bitsPerRawSample = codecParameters->bits_per_raw_sample;
@@ -202,8 +230,8 @@ void CameraClient::_defineCodecContext(int streamIndex)
     codecInfo.height = codecParameters->height;
     codecInfo.sampleAspectRatioNum = codecParameters->sample_aspect_ratio.num;
     codecInfo.sampleAspectRatioDen = codecParameters->sample_aspect_ratio.den;
-    codecInfo.framerateNum = codecContext->framerate.num;
-    codecInfo.framerateDen = codecContext->framerate.den;
+    codecInfo.framerateNum = tempCodecContext->framerate.num;
+    codecInfo.framerateDen = tempCodecContext->framerate.den;
     codecInfo.fieldOrder = codecParameters->field_order;
     codecInfo.colorRange = codecParameters->color_range;
     codecInfo.colorPrimaries = codecParameters->color_primaries;
@@ -217,4 +245,7 @@ void CameraClient::_defineCodecContext(int streamIndex)
     codecInfo.initialPadding = codecParameters->initial_padding;
     codecInfo.trailingPadding = codecParameters->trailing_padding;
     codecInfo.seekPreroll = codecParameters->seek_preroll;
+
+    // Free the temporary codec context as we only needed it for extracting parameters
+    avcodec_free_context(&tempCodecContext);
 }

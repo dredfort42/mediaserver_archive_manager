@@ -1,47 +1,7 @@
 #include "manager.hpp"
-#include <random>
 
-std::string generateUUID()
-{
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 15);
-    std::uniform_int_distribution<> dis2(8, 11);
-
-    std::stringstream hexstream;
-    for (int i = 0; i < 8; i++)
-    {
-        hexstream << std::hex << dis(gen);
-    }
-
-    hexstream << "-";
-    for (int i = 0; i < 4; i++)
-    {
-        hexstream << std::hex << dis(gen);
-    }
-
-    hexstream << "-4";
-    for (int i = 0; i < 3; i++)
-    {
-        hexstream << std::hex << dis(gen);
-    }
-
-    hexstream << "-";
-    hexstream << std::hex << dis2(gen);
-    for (int i = 0; i < 3; i++)
-    {
-        hexstream << std::hex << dis(gen);
-    }
-
-    hexstream << "-";
-    for (int i = 0; i < 12; i++)
-    {
-        hexstream << std::hex << dis(gen);
-    }
-
-    return hexstream.str();
-}
-
+std::string appName = "mediaserver_archive_manager";
+std::string serviceUUID = generateUUID();
 std::string appVersion = "1.0.0";
 
 ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
@@ -51,27 +11,15 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
     archiveManagerConfig.appName = config->getProperty("archive_manager.name");
     if (archiveManagerConfig.appName.empty())
     {
-        print(LogType::DEBUGER, "Archive manager name not defined, using default name: archive_manager");
-        archiveManagerConfig.appName = "mediaserver_archive_manager";
+        print(LogType::DEBUGER, "Archive manager name not defined, using default name: " + appName);
+        archiveManagerConfig.appName = appName;
+    }
+    else
+    {
+        appName = archiveManagerConfig.appName;
     }
 
-    archiveManagerConfig.appUUID = generateUUID();
-    archiveManagerConfig.appVersion = appVersion;
-
     archiveManagerConfig.configPath = config->getConfigFile();
-
-    // archiveManagerConfig.archiveReaderPath = config->getProperty("archive_manager.reader_path");
-    // if (archiveManagerConfig.archiveReaderPath.empty())
-    // {
-    //     print(LogType::WARNING, "Archive reader path not defined, using default path: /app/archive_reader");
-    //     archiveManagerConfig.archiveReaderPath = "/app/archive_reader";
-    // }
-
-    // if (!std::filesystem::exists(archiveManagerConfig.archiveReaderPath) || std::filesystem::is_directory(archiveManagerConfig.archiveReaderPath))
-    // {
-    //     print(LogType::ERROR, "Archive reader path must be a path to an existing file");
-    //     exit(RTN_ERROR);
-    // }
 
     archiveManagerConfig.archiveRecorderPath = config->getProperty("archive_manager.recorder_path");
     if (archiveManagerConfig.archiveRecorderPath.empty())
@@ -105,15 +53,15 @@ MessengerConfig getMessengerConfig(ConfigMap *config)
     messengerConfig.clientId = config->getProperty("kafka.archive_manager_client_id");
     if (messengerConfig.clientId.empty())
     {
-        print(LogType::DEBUGER, "Kafka client id not defined, using default value: archive_manager");
-        messengerConfig.clientId = "archive_manager";
+        print(LogType::DEBUGER, "Kafka client id not defined, using default value: " + appName + "_" + serviceUUID);
+        messengerConfig.clientId = appName + "_" + serviceUUID;
     }
 
     messengerConfig.groupId = config->getProperty("kafka.archive_manager_group_id");
     if (messengerConfig.groupId.empty())
     {
-        print(LogType::DEBUGER, "Kafka group id not defined, using default value: archive_manager_group");
-        messengerConfig.groupId = "archive_manager_group";
+        print(LogType::DEBUGER, "Kafka group id not defined, using default value: " + appName + "_group_" + serviceUUID);
+        messengerConfig.groupId = appName + "_group_" + serviceUUID;
     }
 
     messengerConfig.topicSystemDigest = config->getProperty("kafka.topic_system_digest");

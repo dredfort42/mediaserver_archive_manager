@@ -6,7 +6,6 @@
 #endif
 
 #include <csignal>
-// #include <nlohmann/json.hpp>
 #include <thread>
 #include <libpq-fe.h>
 #include <chrono>
@@ -18,6 +17,7 @@
 // #include "chronoName.hpp"
 #include "messenger.hpp"
 #include "protoData.pb.h"
+#include "uuid.hpp"
 
 #define RTN_ERROR -1
 #define RTN_SUCCESS 0

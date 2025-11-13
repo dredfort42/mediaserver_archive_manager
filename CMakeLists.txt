@@ -88,14 +88,13 @@ target_compile_options(common_compile_options INTERFACE
 add_library(common_includes INTERFACE)
 target_include_directories(common_includes INTERFACE
     "${CMAKE_SOURCE_DIR}/src/shared"
-    # "${CMAKE_SOURCE_DIR}/src/shared/archiveTask"
     "${CMAKE_SOURCE_DIR}/src/shared/camera"
     "${CMAKE_SOURCE_DIR}/src/shared/chronoName"
     "${CMAKE_SOURCE_DIR}/src/shared/configReader"
     "${CMAKE_SOURCE_DIR}/src/shared/frameParser"
     "${CMAKE_SOURCE_DIR}/src/shared/logPrinter"
     "${CMAKE_SOURCE_DIR}/src/shared/messenger"
-    # "${CMAKE_SOURCE_DIR}/src/shared/timeIntervalParser"
+    "${CMAKE_SOURCE_DIR}/src/shared/uuid"
     "${CMAKE_CURRENT_BINARY_DIR}"
     ${FFMPEG_INCLUDE_DIRS}
 )
@@ -133,18 +132,16 @@ endif()
 set(ARCHIVE_MANAGER_NAME archive_manager)
 
 add_executable(${ARCHIVE_MANAGER_NAME}
-    # src/shared/archiveTask/archiveTask.cpp
     src/shared/camera/archiveParameters.cpp
     src/shared/configReader/configMap.cpp
     src/shared/logPrinter/logPrinter.cpp
     src/shared/messenger/messenger.cpp
+    src/shared/uuid/uuid.cpp
     ${PROTO_SRCS}
     src/services/manager/thConsumer.cpp
     src/services/manager/thCameras.cpp
     src/services/manager/thRecorder.cpp
-    # src/services/manager/thController.cpp
     src/services/manager/thDatabase.cpp
-    # src/services/manager/thReader.cpp
 	src/services/manager/config.cpp
 	src/services/manager/initMessenger.cpp
 	src/services/manager/initDatabase.cpp
@@ -155,7 +152,6 @@ target_link_libraries(${ARCHIVE_MANAGER_NAME}
     PRIVATE
         common_compile_options
         common_includes
-        # nlohmann_json::nlohmann_json
 )
 
 if(MACOSX)
@@ -189,11 +185,10 @@ add_executable(${ARCHIVE_RECORDER_NAME}
     src/shared/messenger/messenger.cpp
     src/shared/chronoName/chronoName.cpp
     src/shared/frameParser/frameParser.cpp
+    src/shared/uuid/uuid.cpp
     ${PROTO_SRCS}
     src/services/recorder/thConsumer.cpp
-    # src/services/recorder/thAVPacket.cpp
     src/services/recorder/thFileWriter.cpp
-    # src/services/recorder/thSendOffset.cpp
     src/services/recorder/config.cpp
     src/services/recorder/initMessenger.cpp
     src/services/recorder/main.cpp
@@ -223,42 +218,3 @@ else()
 endif()
 
 install(TARGETS ${ARCHIVE_RECORDER_NAME} RUNTIME DESTINATION bin)
-
-# # ==============================================================================
-# # ARCHIVE READER executable
-# # ==============================================================================
-# set(ARCHIVE_READER_NAME archive_reader)
-
-# add_executable(${ARCHIVE_READER_NAME}
-#     src/shared/logPrinter/logPrinter.cpp
-#     src/shared/configReader/configMap.cpp
-#     src/shared/messenger/messenger.cpp
-#     ${PROTO_SRCS}
-#     src/reader/fileReader.cpp
-#     src/reader/contentList.cpp
-#     src/reader/timeIntervalParser.cpp
-#     src/reader/main.cpp
-# )
-
-# target_link_libraries(${ARCHIVE_READER_NAME}
-#     PRIVATE
-#         common_compile_options
-#         common_includes
-# )
-
-# if(MACOSX)
-#     target_link_libraries(${ARCHIVE_READER_NAME} PRIVATE
-#         ${RDKAFKA_LIBRARIES}
-#         ${PROTOBUF_LIBRARIES}
-#         absl_log_internal_check_op
-#         absl_log_internal_message
-#     )
-# else()
-#     target_link_libraries(${ARCHIVE_READER_NAME} PRIVATE
-#         rdkafka++
-#         rdkafka
-#         protobuf
-#     )
-# endif()
-
-# install(TARGETS ${ARCHIVE_READER_NAME} RUNTIME DESTINATION bin)

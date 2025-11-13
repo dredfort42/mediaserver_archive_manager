@@ -97,26 +97,21 @@ CameraArchiveInfo getCameraArchiveInfo(const std::string &cameraUuid, const std:
 
 void addArchiveToMap(std::map<std::string, ArchiveParameters> *archivesToManage, std::mutex *archivesToManageMx, ArchiveParameters archive)
 {
+    std::lock_guard<std::mutex> lock(*archivesToManageMx);
     if (archivesToManage->find(archive.getStreamUUID()) == archivesToManage->end())
         archivesToManage->insert(std::pair<std::string, ArchiveParameters>(archive.getStreamUUID(), archive));
     else
-    {
-        archivesToManageMx->lock();
         archivesToManage->at(archive.getStreamUUID()) = archive;
-        archivesToManageMx->unlock();
-    }
 
     printAddedArchiveInfo(archive.getStreamUUID(), archive);
 }
 
 void removeArchiveFromMap(std::map<std::string, ArchiveParameters> *archivesToManage, std::mutex *archivesToManageMx, ArchiveParameters *archive)
 {
+    std::lock_guard<std::mutex> lock(*archivesToManageMx);
     if (archivesToManage->find(archive->getStreamUUID()) != archivesToManage->end())
     {
-        archivesToManageMx->lock();
         archivesToManage->erase(archive->getStreamUUID());
-        archivesToManageMx->unlock();
-
         printRemovedArchiveInfo(archive->getStreamUUID());
     }
 }
@@ -143,42 +138,26 @@ void readCameras(volatile sig_atomic_t *isInterrupted,
 {
     print(LogType::DEBUGER, ">>> Start read cameras thread");
 
-    print(LogType::DEBUGER, "Cameras topic: " + messengerConfig->topicCameras);
     std::string camerasTopic = messengerConfig->topicCameras;
 
     waitingForCamerasData(isInterrupted, messengerContent, camerasTopic);
 
     while (!*isInterrupted)
     {
-        // Safely check if topic still exists before accessing it
-        auto topicIt = messengerContent->find(camerasTopic);
-        if (topicIt == messengerContent->end())
-        {
-            print(LogType::WARNING, "Cameras topic disappeared, waiting...");
-            waitingForCamerasData(isInterrupted, messengerContent, camerasTopic);
-            continue;
-        }
-
-        // Lock the map mutex to safely iterate and modify
-        std::lock_guard<std::mutex> mapLock(topicIt->second.mapMutex);
-        Messenger::messages_map_t *messages = &topicIt->second.map;
+        Messenger::messages_map_t *messages = &messengerContent->at(camerasTopic);
 
         for (auto it = messages->begin(); !*isInterrupted && it != messages->end();)
         {
-            std::string cameraUUID = it->first;
-            std::string messageData;
-
-            // Lock the individual message mutex to read its content
+            std::string messageCopy;
             {
-                std::lock_guard<std::mutex> msgLock(it->second.mutex);
-                messageData = it->second.message;
+                std::lock_guard<std::mutex> lock(it->second.mutex);
+                messageCopy = it->second.message;
             }
 
-            if (!messageData.empty())
+            if (!messageCopy.empty())
             {
-                CameraArchiveInfo CAI = getCameraArchiveInfo(cameraUUID, messageData);
-
-                print(LogType::DEBUGER, "Processing archive for camera with UUID: " + cameraUUID);
+                CameraArchiveInfo CAI = getCameraArchiveInfo(it->first, messageCopy);
+                print(LogType::DEBUGER, "Processing archive for camera with UUID: " + it->first);
 
                 if (CAI.statusCode == CONNECTION_STATUS_CODE_OFF || CAI.archive.getArchiveRetentionDays() == 0)
                     removeArchiveFromMap(archivesToManage, archivesToManageMx, &CAI.archive);

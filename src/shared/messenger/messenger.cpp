@@ -161,12 +161,9 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
     for (auto topic : *topics)
     {
         if (messages->find(topic) == messages->end())
-        {
-            // Use emplace or piecewise_construct to create ThreadSafeMessagesMap in place
-            messages->emplace(std::piecewise_construct,
-                              std::forward_as_tuple(topic),
-                              std::forward_as_tuple());
-        }
+            messages->insert(Messenger::topic_messages_t(topic, Messenger::messages_map_t()));
+        else
+            messages->at(topic) = Messenger::messages_map_t();
     }
 
     while (!*_isInterrupted)
@@ -174,32 +171,25 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
         RdKafka::Message *message = _consumer->consume(1000);
         Messenger::message_t tmp = _consumeMessage(message);
 
-        if (!tmp.first.empty())
+        if (!tmp.first.empty() && message)
         {
             std::string topicName = message->topic_name();
 
-            // Find the topic in the map
-            auto topicIt = messages->find(topicName);
-            if (topicIt != messages->end())
+            // Check if topic exists in messages map
+            if (messages->find(topicName) == messages->end())
             {
-                // Lock the map mutex for structure operations
-                std::lock_guard<std::mutex> mapLock(topicIt->second.mapMutex);
+                delete message;
+                continue;
+            }
 
-                auto &topicMessages = topicIt->second.map;
+            Messenger::messages_map_t *topicMessages = &messages->at(topicName);
 
-                // Check if message key exists
-                auto msgIt = topicMessages.find(tmp.first);
-                if (msgIt == topicMessages.end())
-                {
-                    // Insert new message
-                    topicMessages.insert(std::pair<std::string, MxMessage>(tmp.first, MxMessage(tmp.second)));
-                }
-                else
-                {
-                    // Update existing message (with message-level lock)
-                    std::lock_guard<std::mutex> msgLock(msgIt->second.mutex);
-                    msgIt->second.message = tmp.second;
-                }
+            if (topicMessages->find(tmp.first) == topicMessages->end())
+                topicMessages->insert(std::pair<std::string, MxMessage>(tmp.first, MxMessage(tmp.second)));
+            else
+            {
+                std::lock_guard<std::mutex> lock(topicMessages->at(tmp.first).mutex);
+                topicMessages->at(tmp.first).message = tmp.second;
             }
         }
 
@@ -208,6 +198,7 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
 
     return 0;
 }
+
 int Messenger::consumeMessages(std::list<Messenger::packet_t> *packets, const std::string *topic)
 {
     std::vector<std::string> topics_vector;

@@ -15,6 +15,7 @@
 #include "chronoName.hpp"
 #include "frameParser.hpp"
 #include "messenger.hpp"
+#include "uuid.hpp"
 
 #define RTN_ERROR -1
 #define RTN_SUCCESS 0
