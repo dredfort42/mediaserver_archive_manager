@@ -9,6 +9,7 @@
 #include <thread>
 #include <libpq-fe.h>
 #include <chrono>
+#include <vector>
 
 #include "logPrinter.hpp"
 #include "configMap.hpp"
