@@ -158,12 +158,12 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
         return -1;
     }
 
-    for (auto topic : *topics)
+    for (std::string topic : *topics)
     {
         if (messages->find(topic) == messages->end())
             messages->insert(Messenger::topic_messages_t(topic, Messenger::messages_map_t()));
-        else
-            messages->at(topic) = Messenger::messages_map_t();
+        // Note: Don't clear existing topic entries to prevent race conditions
+        // The entries will be managed by consumer and worker threads
     }
 
     while (!*_isInterrupted)
@@ -176,20 +176,22 @@ int Messenger::consumeMessages(Messenger::messenger_content_t *messages, const M
             std::string topicName = message->topic_name();
 
             // Check if topic exists in messages map
-            if (messages->find(topicName) == messages->end())
+            auto topicIt = messages->find(topicName);
+            if (topicIt == messages->end())
             {
                 delete message;
                 continue;
             }
 
-            Messenger::messages_map_t *topicMessages = &messages->at(topicName);
+            Messenger::messages_map_t *topicMessages = &topicIt->second;
 
-            if (topicMessages->find(tmp.first) == topicMessages->end())
+            auto msgIt = topicMessages->find(tmp.first);
+            if (msgIt == topicMessages->end())
                 topicMessages->insert(std::pair<std::string, MxMessage>(tmp.first, MxMessage(tmp.second)));
             else
             {
-                std::lock_guard<std::mutex> lock(topicMessages->at(tmp.first).mutex);
-                topicMessages->at(tmp.first).message = tmp.second;
+                std::lock_guard<std::mutex> lock(msgIt->second.mutex);
+                msgIt->second.message = tmp.second;
             }
         }
 
