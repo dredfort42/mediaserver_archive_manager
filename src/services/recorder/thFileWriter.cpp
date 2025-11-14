@@ -53,13 +53,28 @@ void writeAVPacketsToFile(Messenger *messenger,
 
         if (iFrame)
         {
+            // filePath and currentFileName are numeric strings, convert them properly
+            int folderNum = 0;
+            int fileNum = 0;
+            try
+            {
+                if (!filePath.empty())
+                    folderNum = std::stoi(filePath);
+                if (!currentFileName.empty())
+                    fileNum = std::stoi(currentFileName);
+            }
+            catch (const std::exception &e)
+            {
+                print(LogType::ERROR, "Error converting path/filename to int: " + std::string(e.what()));
+            }
+
             produceOffset(messenger,
                           topicForOffsets,
                           cameraUUID,
                           packet.first,
                           offset,
-                          std::atoi(filePath.c_str()),
-                          std::atoi(currentFileName.c_str()));
+                          folderNum,
+                          fileNum);
 
             fileName = std::to_string(ChronoName::getFileName(packet.first, *fragmentLengthInSeconds));
         }
