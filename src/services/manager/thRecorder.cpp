@@ -5,9 +5,15 @@ void startRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
                     ArchiveManagerConfig *archiveManagerConfig,
                     std::mutex *archivesToManageMx)
 {
-    std::lock_guard<std::mutex> lock(*archivesToManageMx);
+    // Make a copy of archivesToManage with mutex protection
+    std::map<std::string, ArchiveParameters> archivesToManageCopy;
+    {
+        std::lock_guard<std::mutex> lock(*archivesToManageMx);
+        archivesToManageCopy = *archivesToManage;
+    }
+    // Mutex is now unlocked before fork()
 
-    for (const auto &archiveEntry : *archivesToManage)
+    for (const auto &archiveEntry : archivesToManageCopy)
     {
         if (controlledArchives->find(archiveEntry.first) == controlledArchives->end())
         {
@@ -55,11 +61,17 @@ void stopRecording(std::map<std::string, ArchiveParameters> *archivesToManage,
                    std::map<std::string, ArchiveParameters> *controlledArchives,
                    std::mutex *archivesToManageMx)
 {
-    std::lock_guard<std::mutex> lock(*archivesToManageMx);
+    // Make a copy of archivesToManage with mutex protection
+    std::map<std::string, ArchiveParameters> archivesToManageCopy;
+    {
+        std::lock_guard<std::mutex> lock(*archivesToManageMx);
+        archivesToManageCopy = *archivesToManage;
+    }
+    // Mutex is now unlocked
 
     for (auto it = controlledArchives->begin(); it != controlledArchives->end();)
     {
-        if (it->second.getPID() && archivesToManage->find(it->first) == archivesToManage->end())
+        if (it->second.getPID() && archivesToManageCopy.find(it->first) == archivesToManageCopy.end())
             kill(it->second.getPID(), SIGTERM);
 
         if (it->second.getPID() && waitpid(it->second.getPID(), nullptr, WNOHANG))
