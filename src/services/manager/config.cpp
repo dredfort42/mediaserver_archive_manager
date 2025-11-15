@@ -19,6 +19,9 @@ ArchiveManagerConfig getArchiveManagerConfig(ConfigMap *config)
         appName = archiveManagerConfig.appName;
     }
 
+    archiveManagerConfig.appUUID = serviceUUID;
+    archiveManagerConfig.appVersion = appVersion;
+
     archiveManagerConfig.configPath = config->getConfigFile();
 
     archiveManagerConfig.archiveRecorderPath = config->getProperty("archive_manager.recorder_path");

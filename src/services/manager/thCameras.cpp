@@ -146,26 +146,24 @@ void readCameras(volatile sig_atomic_t *isInterrupted,
     {
         Messenger::messages_map_t *messages = &messengerContent->at(camerasTopic);
 
-        for (auto it = messages->begin(); !*isInterrupted && it != messages->end();)
+        for (auto it = messages->begin(); !*isInterrupted && it != messages->end(); it++)
         {
             std::string messageCopy;
             {
                 std::lock_guard<std::mutex> lock(it->second.mutex);
+                if (it->second.message.empty())
+                    continue;
                 messageCopy = it->second.message;
+                it->second.message.clear();
             }
 
-            if (!messageCopy.empty())
-            {
-                CameraArchiveInfo CAI = getCameraArchiveInfo(it->first, messageCopy);
-                print(LogType::DEBUGER, "Processing archive for camera with UUID: " + it->first);
+            CameraArchiveInfo CAI = getCameraArchiveInfo(it->first, messageCopy);
+            print(LogType::DEBUGER, "Processing archive for camera with UUID: " + it->first);
 
-                if (CAI.statusCode == CONNECTION_STATUS_CODE_OFF || CAI.archive.getArchiveRetentionDays() == 0)
-                    removeArchiveFromMap(archivesToManage, archivesToManageMx, &CAI.archive);
-                else
-                    processArchive(archivesToManage, archivesToManageMx, &CAI.archive);
-            }
-
-            it = messages->erase(it);
+            if (CAI.statusCode == CONNECTION_STATUS_CODE_OFF || CAI.archive.getArchiveRetentionDays() == 0)
+                removeArchiveFromMap(archivesToManage, archivesToManageMx, &CAI.archive);
+            else
+                processArchive(archivesToManage, archivesToManageMx, &CAI.archive);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(ArchiveManagerConstants::DELAY_MS));

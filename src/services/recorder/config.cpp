@@ -19,6 +19,9 @@ RecorderConfig getRecorderConfig(ConfigMap *config)
         appName = recorderConfig.appName;
     }
 
+    recorderConfig.appUUID = serviceUUID;
+    recorderConfig.appVersion = appVersion;
+
     recorderConfig.storagePath = config->getProperty("archive_recorder.storage_path");
     if (recorderConfig.storagePath.empty())
     {

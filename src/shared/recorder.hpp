@@ -32,6 +32,7 @@ struct RecorderConfig
 {
     std::string appName;
     std::string appUUID;
+    std::string appVersion;
     std::string storagePath;
     int fragmentLengthInSeconds;
 };

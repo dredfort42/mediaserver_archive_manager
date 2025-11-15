@@ -47,7 +47,11 @@ void writeAVPacketsToFile(Messenger *messenger,
         }
 
         proto::ProtoPacket protoPacket;
-        protoPacket.ParseFromString(packet.second);
+        if (!protoPacket.ParseFromString(packet.second))
+        {
+            print(LogType::ERROR, "Failed to parse ProtoPacket from Kafka message");
+            continue;
+        }
 
         bool iFrame = isIFrame(protoPacket.data().c_str(), protoPacket.size());
 

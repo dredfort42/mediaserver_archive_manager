@@ -35,9 +35,7 @@ void storeOffsets(volatile sig_atomic_t *isInterrupted,
         // Create snapshot of keys to avoid iterator invalidation during concurrent access
         std::vector<std::string> keysToProcess;
         for (const auto &entry : *messages)
-        {
             keysToProcess.push_back(entry.first);
-        }
 
         for (const auto &cameraID : keysToProcess)
         {
@@ -51,7 +49,10 @@ void storeOffsets(volatile sig_atomic_t *isInterrupted,
             std::string messageCopy;
             {
                 std::lock_guard<std::mutex> lock(msgIt->second.mutex);
+                if (msgIt->second.message.empty())
+                    continue;
                 messageCopy = msgIt->second.message;
+                msgIt->second.message.clear();
             }
 
             if (!messageCopy.empty())
@@ -60,7 +61,6 @@ void storeOffsets(volatile sig_atomic_t *isInterrupted,
                 if (!protoOffset.ParseFromString(messageCopy))
                 {
                     print(LogType::ERROR, "Failed to parse protobuf message from " + cameraID);
-                    messages->erase(cameraID);
                     continue;
                 }
 
@@ -72,7 +72,6 @@ void storeOffsets(volatile sig_atomic_t *isInterrupted,
                     protoOffset.offset() < 0)
                 {
                     print(LogType::DEBUGER, "Offset from " + cameraID + " is empty or invalid");
-                    messages->erase(cameraID);
                     continue;
                 }
 
@@ -134,8 +133,6 @@ void storeOffsets(volatile sig_atomic_t *isInterrupted,
                     PQclear(res);
                 }
             }
-
-            messages->erase(cameraID);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(ArchiveManagerConstants::DELAY_MS));
