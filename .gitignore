@@ -1,71 +1,83 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# MacOS specific
-.DS_Store
-
-# Visual Studio Code specific
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# IDE/editor directories and files
 .vscode/
-*.code-workspace
+.code-workspace
 
-# C/C++ build files
-*.o
-*.obj
-*.exe
-*.out
-*.app
-*.a
-*.so
-*.dylib
-*.dll
-
-# Build directories
-build/
-cmake-build-debug/
-cmake-build-release/
-
-# CMake generated files
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-
-# Other IDE files (e.g., CLion)
+# JetBrains (GoLand, IntelliJ)
 .idea/
 *.iml
+*.iws
+workspace.xml
+tasks.xml
+usage.statistics.xml
 
-# Temporary files
-*.log
-*.tmp
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim/Neovim swap and backup files
 *.swp
+*.swo
 *~
+[._]*.s[a-v][a-z]
 
-# environment files
-*.env
-env_*
-protoData.pb*
+# Emacs
+*~
+.#*
+.emacs.desktop
+.emacs.d/
 
-# hidden files
-.*
+# Other editors/tools
+.history/
+.cache/
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# env file
+.env
+env_c*.*
+
+# Key files and licenses
+*.pem
+license_*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Ignore files and directories starting with an underscore at any level
 _*
-!.gitignore
+_*/
+**/_*
+**/_*/
+
+# Ignore config files
+config.yaml
+config.yml
+config.json
+config.ini
