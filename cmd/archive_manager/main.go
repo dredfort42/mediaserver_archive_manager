@@ -9,11 +9,11 @@ import (
 	"sync"
 	"syscall"
 
-	// "archive_manager/internal/broker"
+	"archive_manager/internal/broker"
 	"archive_manager/internal/config"
 	// "archive_manager/internal/controller"
-	// "archive_manager/internal/router"
-	// "archive_manager/internal/db"
+	"archive_manager/internal/router"
+	"archive_manager/internal/db"
 
 	log "github.com/dredfort42/go_logger"
 )
@@ -60,33 +60,33 @@ func main() {
 		cancel()
 	}
 
-	// if err := db.Init(); err != nil {
-	// 	log.Error.Println("Database initialization failed:", err)
-	// 	cancel()
-	// }
-	// defer db.Close()
+	if err := db.Init(); err != nil {
+		log.Error.Println("Database initialization failed:", err)
+		cancel()
+	}
+	defer db.Close()
 
 	var wg sync.WaitGroup
 
-	// if err := broker.Init(ctx, cancel, &wg); err != nil {
-	// 	log.Error.Println("Broker initialization failed:", err)
-	// 	cancel()
-	// }
-	// defer broker.Close()
+	if err := broker.Init(ctx, cancel, &wg); err != nil {
+		log.Error.Println("Broker initialization failed:", err)
+		cancel()
+	}
+	defer broker.Close()
 
 	// // if err := controller.Init(ctx, &wg); err != nil {
 	// // 	log.Error.Println("Controller initialization failed:", err)
 	// // 	cancel()
 	// // }
 
-	// if err := router.Init(cancel); err != nil {
-	// 	log.Error.Println("Router initialization failed:", err)
-	// 	cancel()
-	// }
-	// defer router.Close()
+	if err := router.Init(cancel); err != nil {
+		log.Error.Println("Router initialization failed:", err)
+		cancel()
+	}
+	defer router.Close()
 
-	// wg.Add(1)
-	// go broker.ServiceDigestHeartbeat(&wg)
+	wg.Add(1)
+	go broker.ServiceDigestHeartbeat(&wg)
 
 	<-ctx.Done()
 	log.Warning.Println("Termination signal received")

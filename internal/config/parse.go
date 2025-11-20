@@ -11,12 +11,12 @@ func parseConfiguration(cfg *config.Config) {
 	App.UUID = uuid.New().String()
 
 	App.Server = ServerConfig{
-		Host:           cfg.GetString("camera_connection_manager.host"),
-		Port:           cfg.GetInt("camera_connection_manager.port"),
-		ReadTimeout:    cfg.GetDuration("camera_connection_manager.read_timeout"),
-		WriteTimeout:   cfg.GetDuration("camera_connection_manager.write_timeout"),
-		IdleTimeout:    cfg.GetDuration("camera_connection_manager.idle_timeout"),
-		MaxHeaderBytes: cfg.GetInt("camera_connection_manager.max_header_bytes"),
+		Host:           cfg.GetString("archive_manager.host"),
+		Port:           cfg.GetInt("archive_manager.port"),
+		ReadTimeout:    cfg.GetDuration("archive_manager.read_timeout"),
+		WriteTimeout:   cfg.GetDuration("archive_manager.write_timeout"),
+		IdleTimeout:    cfg.GetDuration("archive_manager.idle_timeout"),
+		MaxHeaderBytes: cfg.GetInt("archive_manager.max_header_bytes"),
 	}
 
 	App.ArchiveManager = ArchiveManagerConfig{
