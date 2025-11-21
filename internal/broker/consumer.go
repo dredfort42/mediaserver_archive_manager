@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"archive_manager/internal/config"
@@ -11,8 +12,10 @@ import (
 )
 
 var (
-	Cameras         sync.Map // map[string]pb.ProtoCamera -> map[StreamUUID]CameraProperties
-	StreamConsumers chan *kgo.Record
+	Cameras sync.Map // map[string]pb.ProtoCamera -> map[StreamUUID]CameraProperties
+
+	ArchiveTopics   map[string]chan<- *kgo.Record // map[StreamUUID]chan<- *kgo.Record
+	ArchiveTopicsMu sync.RWMutex
 )
 
 func startConsuming(wg *sync.WaitGroup) {
@@ -21,7 +24,7 @@ func startConsuming(wg *sync.WaitGroup) {
 	log.Info.Println("Kafka consumer started")
 	defer log.Info.Println("Kafka consumer stopped")
 
-	defer close(StreamConsumers)
+	// defer close(StreamConsumers)
 
 	for {
 		select {
@@ -53,4 +56,38 @@ func startConsuming(wg *sync.WaitGroup) {
 			}
 		}
 	}
+}
+
+func AddTopic(topic string, consumerChan chan<- *kgo.Record) error {
+	ArchiveTopicsMu.Lock()
+	defer ArchiveTopicsMu.Unlock()
+
+	if _, exists := ArchiveTopics[topic]; exists {
+		return fmt.Errorf("topic %s already exists", topic)
+	}
+
+	ArchiveTopics[topic] = consumerChan
+
+	Client.AddConsumeTopics(topic)
+
+	log.Info.Printf("Added topic %s to consumer\n", topic)
+
+	return nil
+}
+
+func RemoveTopic(topic string) error {
+	ArchiveTopicsMu.Lock()
+	defer ArchiveTopicsMu.Unlock()
+
+	if _, exists := ArchiveTopics[topic]; !exists {
+		return fmt.Errorf("topic %s does not exist", topic)
+	}
+
+	delete(ArchiveTopics, topic)
+
+	Client.PurgeTopicsFromConsuming(topic)
+
+	log.Info.Printf("Removed topic %s from consumer\n", topic)
+
+	return nil
 }

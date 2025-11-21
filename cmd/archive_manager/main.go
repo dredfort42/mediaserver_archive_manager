@@ -11,9 +11,9 @@ import (
 
 	"archive_manager/internal/broker"
 	"archive_manager/internal/config"
-	// "archive_manager/internal/controller"
-	"archive_manager/internal/router"
+	"archive_manager/internal/controller"
 	"archive_manager/internal/db"
+	"archive_manager/internal/router"
 
 	log "github.com/dredfort42/go_logger"
 )
@@ -74,10 +74,10 @@ func main() {
 	}
 	defer broker.Close()
 
-	// // if err := controller.Init(ctx, &wg); err != nil {
-	// // 	log.Error.Println("Controller initialization failed:", err)
-	// // 	cancel()
-	// // }
+	if err := controller.Init(ctx, &wg); err != nil {
+		log.Error.Println("Controller initialization failed:", err)
+		cancel()
+	}
 
 	if err := router.Init(cancel); err != nil {
 		log.Error.Println("Router initialization failed:", err)

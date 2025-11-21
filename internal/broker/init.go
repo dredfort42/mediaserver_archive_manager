@@ -111,7 +111,7 @@ func Init(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) (e
 	}
 
 	MsgChan = make(chan *Message, MessageChanBufferSize)
-	StreamConsumers = make(chan *kgo.Record, MessageChanBufferSize)
+	// StreamConsumers = make(chan *kgo.Record, MessageChanBufferSize)
 
 	wg.Add(1)
 	go startConsuming(wg)
