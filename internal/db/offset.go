@@ -18,7 +18,6 @@ const (
 
 type DatabaseWriter struct {
 	cameraID   string
-	tableName  string
 	flushTimer *time.Ticker
 	batch      []model.IFrameOffset
 }
@@ -26,7 +25,6 @@ type DatabaseWriter struct {
 func NewDatabaseWriter(cameraID string) *DatabaseWriter {
 	return &DatabaseWriter{
 		cameraID:   cameraID,
-		tableName:  config.App.Database.TableIFrameByteOffsets,
 		flushTimer: time.NewTicker(flushInterval),
 		batch:      make([]model.IFrameOffset, 0, batchSize),
 	}
@@ -97,8 +95,8 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	stmt, err := tx.PrepareContext(ctx, fmt.Sprintf(
 		"INSERT INTO %s (camera_id, folder, file, iframe_indexes) VALUES ($1, $2, $3, $4) "+
 			"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || $4",
-		dw.tableName,
-		dw.tableName,
+		config.App.Database.TableIFrameByteOffsets,
+		config.App.Database.TableIFrameByteOffsets,
 	))
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
@@ -106,15 +104,17 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	defer stmt.Close()
 
 	for k, offsets := range grouped {
-		// Build array of iframe_index composites: ARRAY[(time1, byte1), (time2, byte2), ...]::iframe_index[]
-		arrayValues := make([]string, len(offsets))
-		for i, offset := range offsets {
-			arrayValues[i] = fmt.Sprintf("(%d, %d)", offset.Timestamp, offset.Offset)
+		var arrayValues string
+
+		for _, offset := range offsets {
+			arrayValues += fmt.Sprintf("(%d, %d),", offset.Timestamp, offset.Offset)
 		}
-		arrayStr := fmt.Sprintf("ARRAY[%s]::iframe_index[]", string(arrayValues[0]))
-		for i := 1; i < len(arrayValues); i++ {
-			arrayStr = fmt.Sprintf("%s, %s", arrayStr[:len(arrayStr)-17], arrayValues[i]) + "]::iframe_index[]"
+
+		if len(arrayValues) > 0 {
+			arrayValues = arrayValues[:len(arrayValues)-1] // Remove trailing comma
 		}
+
+		arrayStr := fmt.Sprintf("ARRAY[%s]::iframe_index[]", arrayValues)
 
 		if _, err := stmt.ExecContext(ctx, dw.cameraID, k.folder, k.file, arrayStr); err != nil {
 			return fmt.Errorf("failed to insert offsets for folder=%d file=%d: %w", k.folder, k.file, err)
