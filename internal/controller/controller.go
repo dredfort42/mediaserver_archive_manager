@@ -33,6 +33,10 @@ func controller(ctx context.Context, wg *sync.WaitGroup, controlledArchiveStream
 		case <-ctx.Done():
 			return
 		case <-tiker.C:
+			for _, topic := range broker.Client.GetConsumeTopics() {
+				log.Debug.Printf("Consuming topic: %s\n", topic)
+			}
+
 			broker.Cameras.Range(func(key, value any) bool {
 				cameraID := key.(string)
 				cameraData := value.([]byte)
@@ -49,8 +53,17 @@ func controller(ctx context.Context, wg *sync.WaitGroup, controlledArchiveStream
 
 					broker.Cameras.Delete(cameraID)
 					controlledArchiveStreams.Delete(camera.GetCameraUuid())
+					broker.RemoveArchiveTopic(cameraID + MainStreamSuffix)
 				} else {
 					controlledArchiveStreams.Store(camera.GetCameraUuid(), nil)
+					broker.AddArchiveTopic(cameraID+MainStreamSuffix, nil)
+
+					go func() {
+						time.Sleep(30 * time.Second)
+						broker.Cameras.Delete(cameraID)
+						controlledArchiveStreams.Delete(camera.GetCameraUuid())
+						broker.RemoveArchiveTopic(cameraID + MainStreamSuffix)
+					}()
 				}
 
 				pb.PrintProtoStruct(camera, nil)

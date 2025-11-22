@@ -24,6 +24,7 @@ func startConsuming(wg *sync.WaitGroup) {
 	log.Info.Println("Kafka consumer started")
 	defer log.Info.Println("Kafka consumer stopped")
 
+	ArchiveTopics = make(map[string]chan<- *kgo.Record)
 	// defer close(StreamConsumers)
 
 	for {
@@ -51,14 +52,22 @@ func startConsuming(wg *sync.WaitGroup) {
 				case config.App.Kafka.TopicCameras:
 					Cameras.Store(string(record.Key), record.Value)
 				default:
-					log.Warning.Printf("received message for unknown topic '%s'\n", record.Topic)
+					// ArchiveTopicsMu.RLock()
+					// consumerChan, exists := ArchiveTopics[record.Topic]
+					// ArchiveTopicsMu.RUnlock()
+					// if exists {
+					// 	// consumerChan <- record
+					// 	_ = consumerChan
+					// } else {
+					// 	log.Warning.Printf("received message for unknown topic '%s'\n", record.Topic)
+					// }
 				}
 			}
 		}
 	}
 }
 
-func AddTopic(topic string, consumerChan chan<- *kgo.Record) error {
+func AddArchiveTopic(topic string, consumerChan chan<- *kgo.Record) error {
 	ArchiveTopicsMu.Lock()
 	defer ArchiveTopicsMu.Unlock()
 
@@ -75,7 +84,7 @@ func AddTopic(topic string, consumerChan chan<- *kgo.Record) error {
 	return nil
 }
 
-func RemoveTopic(topic string) error {
+func RemoveArchiveTopic(topic string) error {
 	ArchiveTopicsMu.Lock()
 	defer ArchiveTopicsMu.Unlock()
 
@@ -83,9 +92,9 @@ func RemoveTopic(topic string) error {
 		return fmt.Errorf("topic %s does not exist", topic)
 	}
 
-	delete(ArchiveTopics, topic)
-
 	Client.PurgeTopicsFromConsuming(topic)
+
+	delete(ArchiveTopics, topic)
 
 	log.Info.Printf("Removed topic %s from consumer\n", topic)
 
