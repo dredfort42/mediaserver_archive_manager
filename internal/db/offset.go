@@ -19,18 +19,18 @@ const (
 type DatabaseWriter struct {
 	cameraID   string
 	flushTimer *time.Ticker
-	batch      []model.IFrameOffset
+	batch      []model.BatchMetadata
 }
 
 func NewDatabaseWriter(cameraID string) *DatabaseWriter {
 	return &DatabaseWriter{
 		cameraID:   cameraID,
 		flushTimer: time.NewTicker(flushInterval),
-		batch:      make([]model.IFrameOffset, 0, batchSize),
+		batch:      make([]model.BatchMetadata, 0, batchSize),
 	}
 }
 
-func (dw *DatabaseWriter) Run(ctx context.Context, offsetsChan <-chan model.IFrameOffset) {
+func (dw *DatabaseWriter) Run(ctx context.Context, offsetsChan <-chan model.BatchMetadata) {
 	defer dw.flushTimer.Stop()
 	defer dw.flush(ctx) // Flush remaining on exit
 
@@ -83,18 +83,18 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 		folder int64
 		file   int64
 	}
-	grouped := make(map[key][]model.IFrameOffset)
+	grouped := make(map[key][]model.BatchMetadata)
 
 	for _, offset := range dw.batch {
-		folder := getFolderName(offset.Timestamp)
-		file := getFileName(offset.Timestamp, config.App.ArchiveManager.FragmentLength)
+		folder := getFolderName(offset.IFrameTimestamp)
+		file := getFileName(offset.IFrameTimestamp, config.App.ArchiveManager.FragmentLength)
 		k := key{folder: folder, file: file}
 		grouped[k] = append(grouped[k], offset)
 	}
 
 	stmt, err := tx.PrepareContext(ctx, fmt.Sprintf(
-		"INSERT INTO %s (camera_id, folder, file, iframe_indexes) VALUES ($1, $2, $3, $4) "+
-			"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || $4",
+		"INSERT INTO %s (camera_id, folder, file, iframe_indexes, total_packets) VALUES ($1, $2, $3, $4, $5) "+
+			"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || $4, total_packets = $5",
 		config.App.Database.TableIFrameByteOffsets,
 		config.App.Database.TableIFrameByteOffsets,
 	))
@@ -105,9 +105,15 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 
 	for k, offsets := range grouped {
 		var arrayValues string
+		var totalPackets int64 = 0
 
 		for _, offset := range offsets {
-			arrayValues += fmt.Sprintf("(%d, %d),", offset.Timestamp, offset.Offset)
+			if offset.TotalPackets > 0 {
+				totalPackets = offset.TotalPackets
+			} else {
+				arrayValues += fmt.Sprintf("(%d, %d),", offset.IFrameTimestamp, offset.IFrameOffset)
+				totalPackets = offset.IFramePacketNumInBatch
+			}
 		}
 
 		if len(arrayValues) > 0 {
@@ -116,7 +122,7 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 
 		arrayStr := fmt.Sprintf("ARRAY[%s]::iframe_index[]", arrayValues)
 
-		if _, err := stmt.ExecContext(ctx, dw.cameraID, k.folder, k.file, arrayStr); err != nil {
+		if _, err := stmt.ExecContext(ctx, dw.cameraID, k.folder, k.file, arrayStr, totalPackets); err != nil {
 			return fmt.Errorf("failed to insert offsets for folder=%d file=%d: %w", k.folder, k.file, err)
 		}
 	}

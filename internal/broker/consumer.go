@@ -3,9 +3,11 @@ package broker
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"archive_manager/internal/config"
+	"archive_manager/internal/model"
 
 	log "github.com/dredfort42/go_logger"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -14,7 +16,8 @@ import (
 var (
 	Cameras sync.Map // map[string]pb.ProtoCamera -> map[StreamUUID]CameraProperties
 
-	ArchiveTopics   map[string]chan<- *kgo.Record // map[StreamUUID]chan<- *kgo.Record
+	ArchiveTopics map[string]chan<- model.Frame // map[StreamUUID]chan<- model.Frame
+	// ArchiveTopics   map[string]chan<- *kgo.Record // map[StreamUUID]chan<- *kgo.Record
 	ArchiveTopicsMu sync.RWMutex
 )
 
@@ -24,7 +27,7 @@ func startConsuming(wg *sync.WaitGroup) {
 	log.Info.Println("Kafka consumer started")
 	defer log.Info.Println("Kafka consumer stopped")
 
-	ArchiveTopics = make(map[string]chan<- *kgo.Record)
+	ArchiveTopics = make(map[string]chan<- model.Frame)
 	// defer close(StreamConsumers)
 
 	for {
@@ -52,22 +55,40 @@ func startConsuming(wg *sync.WaitGroup) {
 				case config.App.Kafka.TopicCameras:
 					Cameras.Store(string(record.Key), record.Value)
 				default:
-					// ArchiveTopicsMu.RLock()
-					// consumerChan, exists := ArchiveTopics[record.Topic]
-					// ArchiveTopicsMu.RUnlock()
-					// if exists {
-					// 	// consumerChan <- record
-					// 	_ = consumerChan
-					// } else {
-					// 	log.Warning.Printf("received message for unknown topic '%s'\n", record.Topic)
-					// }
+					ArchiveTopicsMu.RLock()
+					consumerChan, exists := ArchiveTopics[record.Topic]
+					ArchiveTopicsMu.RUnlock()
+					if exists {
+						sendFrameToArchive(record, consumerChan)
+					} else {
+						log.Warning.Printf("received message for unknown topic '%s'\n", record.Topic)
+					}
 				}
 			}
 		}
 	}
 }
 
-func AddArchiveTopic(topic string, consumerChan chan<- *kgo.Record) error {
+func sendFrameToArchive(record *kgo.Record, consumerChan chan<- model.Frame) {
+	headers := make(map[string]string)
+	for _, header := range record.Headers {
+		headers[header.Key] = string(header.Value)
+	}
+
+	frame := model.Frame{
+		CameraID:  strings.Split(string(record.Topic), "_")[0],
+		Timestamp: record.Timestamp.Unix(),
+		Data:      record.Value,
+		IsIFrame:  headers["key_frame"] == "1",
+	}
+
+	// consumerChan <- frame
+
+	log.Debug.Printf("Sent frame to archive: CameraID=%s, Timestamp=%d, IsIFrame=%v\n",
+		frame.CameraID, frame.Timestamp, frame.IsIFrame)
+}
+
+func AddArchiveTopic(topic string, consumerChan chan<- model.Frame) error {
 	ArchiveTopicsMu.Lock()
 	defer ArchiveTopicsMu.Unlock()
 
