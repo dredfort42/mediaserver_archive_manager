@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"archive_manager/internal/archive"
 	"archive_manager/internal/broker"
 	pb "archive_manager/internal/protobuf"
 
@@ -51,19 +52,33 @@ func controller(ctx context.Context, wg *sync.WaitGroup, controlledArchiveStream
 				if camera.GetStatusCode() == CameraOFFStatus {
 					log.Debug.Printf("Camera %s is OFF\n", camera.GetCameraUuid())
 
-					broker.Cameras.Delete(cameraID)
-					controlledArchiveStreams.Delete(camera.GetCameraUuid())
-					broker.RemoveArchiveTopic(cameraID + MainStreamSuffix)
-				} else {
-					controlledArchiveStreams.Store(camera.GetCameraUuid(), nil)
-					broker.AddArchiveTopic(cameraID+MainStreamSuffix, nil)
+					archiveCancel, exists := controlledArchiveStreams.Load(camera.GetCameraUuid())
+					if !exists {
+						return true
+					}
 
-					go func() {
-						time.Sleep(30 * time.Second)
-						broker.Cameras.Delete(cameraID)
-						controlledArchiveStreams.Delete(camera.GetCameraUuid())
-						broker.RemoveArchiveTopic(cameraID + MainStreamSuffix)
-					}()
+					archiveCancel.(context.CancelFunc)()
+
+					controlledArchiveStreams.Delete(camera.GetCameraUuid())
+				} else {
+					_, exists := controlledArchiveStreams.Load(camera.GetCameraUuid())
+					if exists {
+						return true
+					}
+
+					archiveCtx, archiveCancel := context.WithCancel(ctx)
+					controlledArchiveStreams.Store(camera.GetCameraUuid(), archiveCancel)
+
+					pipeline := archive.NewPipeline(camera.GetCameraUuid(), camera.GetCameraUuid()+MainStreamSuffix)
+
+					wg.Go(func() {
+						err := pipeline.Start(archiveCtx)
+						if err != nil {
+							log.Error.Printf("Failed to start archive pipeline for camera %s: %v\n", camera.GetCameraUuid(), err)
+							controlledArchiveStreams.Delete(camera.GetCameraUuid())
+							broker.RemoveArchiveTopic(camera.GetCameraUuid() + MainStreamSuffix)
+						}
+					})
 				}
 
 				pb.PrintProtoStruct(camera, nil)

@@ -82,10 +82,10 @@ func sendFrameToArchive(record *kgo.Record, consumerChan chan<- model.Frame) {
 		IsIFrame:  headers["key_frame"] == "1",
 	}
 
-	// consumerChan <- frame
+	consumerChan <- frame
 
-	log.Debug.Printf("Sent frame to archive: CameraID=%s, Timestamp=%d, IsIFrame=%v\n",
-		frame.CameraID, frame.Timestamp, frame.IsIFrame)
+	// log.Debug.Printf("Sent frame to archive: CameraID=%s, Timestamp=%d, IsIFrame=%v\n",
+	// 	frame.CameraID, frame.Timestamp, frame.IsIFrame)
 }
 
 func AddArchiveTopic(topic string, consumerChan chan<- model.Frame) error {

@@ -9,7 +9,7 @@ import (
 const CheckInterval = 5 * time.Second
 
 func Init(ctx context.Context, wg *sync.WaitGroup) error {
-	var controlledArchiveStreams sync.Map // map[string]any -> map[StreamID]any
+	var controlledArchiveStreams sync.Map // map[string]context.CancelFunc -> map[StreamID]archiveCancel
 
 	wg.Add(1)
 	go controller(ctx, wg, &controlledArchiveStreams)
