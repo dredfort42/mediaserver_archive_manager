@@ -76,10 +76,11 @@ func sendFrameToArchive(record *kgo.Record, consumerChan chan<- model.Frame) {
 	}
 
 	frame := model.Frame{
-		CameraID:  strings.Split(string(record.Topic), "_")[0],
-		Timestamp: record.Timestamp.Unix(),
-		Data:      record.Value,
-		IsIFrame:  headers["key_frame"] == "1",
+		CameraID:     strings.Split(string(record.Topic), "_")[0],
+		Timestamp:    record.Timestamp.Unix(),
+		Data:         record.Value,
+		IsVideoFrame: string(record.Key) == "video",
+		IsIFrame:     headers["key_frame"] == "1",
 	}
 
 	consumerChan <- frame

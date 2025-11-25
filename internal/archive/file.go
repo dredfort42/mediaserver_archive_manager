@@ -51,20 +51,34 @@ func (w *Writer) Run(ctx context.Context, framesChan <-chan model.Frame, offsets
 }
 
 func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchMetadata) error {
-	// Rotate file if needed
-	if frame.IsIFrame && w.shouldRotateFile() {
-		offset := model.BatchMetadata{
-			CameraID:               frame.CameraID,
-			IFrameTimestamp:        w.lastIFrameTimestamp,
-			IFrameOffset:           0,
-			IFramePacketNumInBatch: 0,
-			TotalPackets:           w.fileFrameCount,
-		}
+	if len(frame.Data) == 0 {
+		return nil // Skip empty frames
+	}
 
-		select {
-		case offsetsChan <- offset:
-		default:
-			log.Warning.Println("Offset channel full, dropping offset")
+	// Create file if needed (first frame or no file)
+	if w.currentFile == nil {
+		if err := w.rotateFile(frame.CameraID, frame.Timestamp); err != nil {
+			return fmt.Errorf("failed to create initial file: %w", err)
+		}
+	}
+
+	// Rotate file if I-frame and time-based rotation is needed
+	if frame.IsIFrame && w.shouldRotateFile() {
+		// Send final metadata with total frame count for the file being closed
+		if w.lastIFrameTimestamp > 0 && w.fileFrameCount > 0 {
+			offset := model.BatchMetadata{
+				CameraID:               frame.CameraID,
+				IFrameTimestamp:        w.lastIFrameTimestamp,
+				IFrameOffset:           0,
+				IFramePacketNumInBatch: 0,
+				TotalPackets:           w.fileFrameCount,
+			}
+
+			select {
+			case offsetsChan <- offset:
+			default:
+				log.Warning.Println("Offset channel full, dropping offset")
+			}
 		}
 
 		if err := w.rotateFile(frame.CameraID, frame.Timestamp); err != nil {
@@ -72,15 +86,13 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 		}
 	}
 
-	w.fileFrameCount++
-
-	// Write frame to file
+	// Write frame to file BEFORE counting
 	n, err := w.currentFile.Write(frame.Data)
 	if err != nil {
 		return fmt.Errorf("failed to write frame: %w", err)
 	}
 
-	// If I-frame, send offset to database writer
+	// If I-frame, send offset to database writer with current offset (before updating)
 	if frame.IsIFrame {
 		w.lastIFrameTimestamp = frame.Timestamp
 
@@ -88,8 +100,8 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 			CameraID:               frame.CameraID,
 			IFrameTimestamp:        frame.Timestamp,
 			IFrameOffset:           w.currentOffset,
-			IFramePacketNumInBatch: w.fileFrameCount,
-			TotalPackets:           0, // Will be updated by DB writer when batch is complete
+			IFramePacketNumInBatch: w.fileFrameCount, // Count of frames BEFORE this I-frame
+			TotalPackets:           0,                // Will be updated when file is closed
 		}
 
 		select {
@@ -99,7 +111,11 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 		}
 	}
 
+	// Update counters AFTER writing and sending offset
 	w.currentOffset += int64(n)
+	if frame.IsVideoFrame {
+		w.fileFrameCount++
+	}
 	return nil
 }
 

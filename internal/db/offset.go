@@ -92,17 +92,7 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 		grouped[k] = append(grouped[k], offset)
 	}
 
-	stmt, err := tx.PrepareContext(ctx, fmt.Sprintf(
-		"INSERT INTO %s (camera_id, folder, file, iframe_indexes, total_packets) VALUES ($1, $2, $3, $4, $5) "+
-			"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || $4, total_packets = $5",
-		config.App.Database.TableIFrameByteOffsets,
-		config.App.Database.TableIFrameByteOffsets,
-	))
-	if err != nil {
-		return fmt.Errorf("failed to prepare statement: %w", err)
-	}
-	defer stmt.Close()
-
+	// Insert each group with dynamic SQL
 	for k, offsets := range grouped {
 		var arrayValues string
 		var totalPackets int64 = 0
@@ -111,18 +101,24 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 			if offset.TotalPackets > 0 {
 				totalPackets = offset.TotalPackets
 			} else {
-				arrayValues += fmt.Sprintf("(%d, %d),", offset.IFrameTimestamp, offset.IFrameOffset)
+				if len(arrayValues) > 0 {
+					arrayValues += ","
+				}
+				arrayValues += fmt.Sprintf("ROW(%d,%d)", offset.IFrameTimestamp, offset.IFrameOffset)
 				totalPackets = offset.IFramePacketNumInBatch
 			}
 		}
 
-		if len(arrayValues) > 0 {
-			arrayValues = arrayValues[:len(arrayValues)-1] // Remove trailing comma
-		}
+		query := fmt.Sprintf(
+			"INSERT INTO %s (camera_id, folder, file, iframe_indexes, total_packets) VALUES ($1, $2, $3, ARRAY[%s]::iframe_index[], $4) "+
+				"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || ARRAY[%s]::iframe_index[], total_packets = $4",
+			config.App.Database.TableIFrameByteOffsets,
+			arrayValues,
+			config.App.Database.TableIFrameByteOffsets,
+			arrayValues,
+		)
 
-		arrayStr := fmt.Sprintf("ARRAY[%s]::iframe_index[]", arrayValues)
-
-		if _, err := stmt.ExecContext(ctx, dw.cameraID, k.folder, k.file, arrayStr, totalPackets); err != nil {
+		if _, err := tx.ExecContext(ctx, query, dw.cameraID, k.folder, k.file, totalPackets); err != nil {
 			return fmt.Errorf("failed to insert offsets for folder=%d file=%d: %w", k.folder, k.file, err)
 		}
 	}
@@ -131,7 +127,7 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	log.Info.Printf("Flushed %d I-frame offsets to database for camera %s", len(dw.batch), dw.cameraID)
+	log.Debug.Printf("Flushed %d I-frame offsets to database for camera %s", len(dw.batch), dw.cameraID)
 	dw.batch = dw.batch[:0] // Clear batch
 
 	return nil

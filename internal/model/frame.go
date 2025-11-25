@@ -1,10 +1,11 @@
 package model
 
 type Frame struct {
-	CameraID  string
-	Timestamp int64
-	Data      []byte
-	IsIFrame  bool
+	CameraID     string
+	Timestamp    int64
+	Data         []byte
+	IsVideoFrame bool
+	IsIFrame     bool
 }
 
 type BatchMetadata struct {

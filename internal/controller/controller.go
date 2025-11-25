@@ -49,17 +49,16 @@ func controller(ctx context.Context, wg *sync.WaitGroup, controlledArchiveStream
 					return true
 				}
 
-				if camera.GetStatusCode() == CameraOFFStatus {
-					log.Debug.Printf("Camera %s is OFF\n", camera.GetCameraUuid())
-
+				if camera.GetStatusCode() == CameraOFFStatus || camera.GetArchiveRetentionDays() == 0 {
 					archiveCancel, exists := controlledArchiveStreams.Load(camera.GetCameraUuid())
 					if !exists {
 						return true
 					}
 
 					archiveCancel.(context.CancelFunc)()
-
 					controlledArchiveStreams.Delete(camera.GetCameraUuid())
+
+					log.Debug.Printf("Archive for camera %s is OFF\n", camera.GetCameraUuid())
 				} else {
 					_, exists := controlledArchiveStreams.Load(camera.GetCameraUuid())
 					if exists {
@@ -79,6 +78,8 @@ func controller(ctx context.Context, wg *sync.WaitGroup, controlledArchiveStream
 							broker.RemoveArchiveTopic(camera.GetCameraUuid() + MainStreamSuffix)
 						}
 					})
+
+					log.Debug.Printf("Archive for camera %s is ON\n", camera.GetCameraUuid())
 				}
 
 				pb.PrintProtoStruct(camera, nil)
