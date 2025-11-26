@@ -22,5 +22,8 @@ func Init(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup) (e
 	wg.Add(1)
 	go purge(ctx, wg)
 
+	wg.Add(1)
+	go cleanup(ctx, wg)
+
 	return nil
 }
