@@ -128,7 +128,13 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	}
 
 	log.Debug.Printf("Flushed %d I-frame offsets to database for camera %s", len(dw.batch), dw.cameraID)
-	dw.batch = dw.batch[:0] // Clear batch
+	
+	// Reset batch and periodically shrink capacity to prevent unbounded growth
+	if cap(dw.batch) > batchSize*4 {
+		dw.batch = make([]model.BatchMetadata, 0, batchSize)
+	} else {
+		dw.batch = dw.batch[:0]
+	}
 
 	return nil
 }

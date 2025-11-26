@@ -60,4 +60,4 @@ LABEL description="Camera Archive Manager Service"
 LABEL version="${SERVER_VERSION}"
 
 # Run the application
-CMD ["./archive_manager"]
+CMD ["./archive_manager", "--config", "config.ini"]

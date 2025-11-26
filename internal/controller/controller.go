@@ -57,6 +57,9 @@ func controller(ctx context.Context, wg *sync.WaitGroup, controlledArchiveStream
 
 					archiveCancel.(context.CancelFunc)()
 					controlledArchiveStreams.Delete(camera.GetCameraUuid())
+					
+					// Clean up camera data from broker map to prevent memory leak
+					broker.Cameras.Delete(camera.GetCameraUuid())
 
 					log.Debug.Printf("Archive for camera %s is OFF\n", camera.GetCameraUuid())
 				} else {
