@@ -82,7 +82,7 @@ func Init(ctx context.Context, configPath string) error {
 		"heartbeat_interval": 10 * time.Second,
 
 		"archive_manager.host":             "localhost",
-		"archive_manager.port":             8100,
+		"archive_manager.port":             9090,
 		"archive_manager.read_timeout":     "30s",
 		"archive_manager.write_timeout":    "30s",
 		"archive_manager.idle_timeout":     "120s",
