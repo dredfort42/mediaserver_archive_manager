@@ -20,22 +20,23 @@ func parseConfiguration(cfg *config.Config) {
 	}
 
 	App.ArchiveManager = ArchiveManagerConfig{
-		StoragePath:    cfg.GetString("archive_manager.storage_path"),
-		FragmentLength: cfg.GetDuration("archive_manager.fragment_length"),
+		StoragePath:      cfg.GetString("archive_manager.storage_path"),
+		FragmentDuration: cfg.GetDuration("archive_manager.fragment_duration"),
+		RetentionWorkers: cfg.GetInt("archive_manager.retention_workers"),
 	}
 
 	App.Database = DatabaseConfig{
-		Driver:         cfg.GetString("database.driver"),
-		Host:           cfg.GetString("database.host"),
-		Port:           cfg.GetInt("database.port"),
-		Name:           cfg.GetString("database.name"),
-		User:           cfg.GetString("database.user"),
-		Password:       cfg.GetString("database.password"),
-		SSLEnabled:     cfg.GetBool("database.ssl_enabled"),
-		MaxOpenConn:    cfg.GetInt("database.max_open_conn"),
-		MaxIdleConn:    cfg.GetInt("database.max_idle_conn"),
-		MaxLifetime:    cfg.GetDuration("database.max_lifetime"),
-		MaxIdleTime:    cfg.GetDuration("database.max_idle_time"),
+		Driver:                 cfg.GetString("database.driver"),
+		Host:                   cfg.GetString("database.host"),
+		Port:                   cfg.GetInt("database.port"),
+		Name:                   cfg.GetString("database.name"),
+		User:                   cfg.GetString("database.user"),
+		Password:               cfg.GetString("database.password"),
+		SSLEnabled:             cfg.GetBool("database.ssl_enabled"),
+		MaxOpenConn:            cfg.GetInt("database.max_open_conn"),
+		MaxIdleConn:            cfg.GetInt("database.max_idle_conn"),
+		MaxLifetime:            cfg.GetDuration("database.max_lifetime"),
+		MaxIdleTime:            cfg.GetDuration("database.max_idle_time"),
 		TableIFrameByteOffsets: cfg.GetString("database.table_iframe_byte_offsets"),
 	}
 

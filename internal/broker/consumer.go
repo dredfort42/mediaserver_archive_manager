@@ -8,13 +8,16 @@ import (
 
 	"archive_manager/internal/config"
 	"archive_manager/internal/model"
+	pb "archive_manager/internal/protobuf"
 
 	log "github.com/dredfort42/go_logger"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
-	Cameras sync.Map // map[string]pb.ProtoCamera -> map[StreamUUID]CameraProperties
+	Cameras    sync.Map // map[string]pb.ProtoCamera -> map[StreamUUID]CameraProperties
+	Retentions sync.Map // map[string]int -> map[CameraUUID]RetentionDays
 
 	ArchiveTopics map[string]chan<- model.Frame // map[StreamUUID]chan<- model.Frame
 	// ArchiveTopics   map[string]chan<- *kgo.Record // map[StreamUUID]chan<- *kgo.Record
@@ -53,6 +56,13 @@ func startConsuming(wg *sync.WaitGroup) {
 
 				switch record.Topic {
 				case config.App.Kafka.TopicCameras:
+					camera := &pb.ProtoCamera{}
+					if err := proto.Unmarshal(record.Value, camera); err != nil {
+						log.Error.Printf("failed to unmarshal camera protobuf for key %v: %v", record.Key, err)
+						continue
+					}
+
+					Retentions.Store(camera.CameraUuid, camera.ArchiveRetentionDays)
 					Cameras.Store(string(record.Key), record.Value)
 				default:
 					ArchiveTopicsMu.RLock()

@@ -21,8 +21,9 @@ type ServerConfig struct {
 
 // ArchiveManagerConfig represents archive manager specific configuration
 type ArchiveManagerConfig struct {
-	StoragePath    string
-	FragmentLength time.Duration
+	StoragePath      string
+	FragmentDuration time.Duration
+	RetentionWorkers int
 }
 
 // DatabaseConfig represents database configuration
@@ -87,14 +88,15 @@ func Init(ctx context.Context, configPath string) error {
 		"archive_manager.idle_timeout":     "120s",
 		"archive_manager.max_header_bytes": 1048576, // 1MB
 
-		"archive_manager.fragment_length": "5m",
+		"archive_manager.fragment_duration": "5m",
+		"archive_manager.retention_workers": 5,
 
-		"database.driver":          "postgres",
-		"database.ssl_enabled":     false,
-		"database.max_open_conn":   25,
-		"database.max_idle_conn":   5,
-		"database.max_lifetime":    "5m",
-		"database.max_idle_time":   "2m",
+		"database.driver":        "postgres",
+		"database.ssl_enabled":   false,
+		"database.max_open_conn": 25,
+		"database.max_idle_conn": 5,
+		"database.max_lifetime":  "5m",
+		"database.max_idle_time": "2m",
 
 		"kafka.consumer_config": map[string]any{"auto.offset.reset": "latest"},
 		"kafka.producer_config": map[string]any{"acks": "all"},

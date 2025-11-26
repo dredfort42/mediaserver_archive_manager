@@ -29,7 +29,7 @@ func NewPipeline(cameraID, topic string) *Pipeline {
 		framesChan:  make(chan model.Frame, 300),         // Buffer ~10s at 30fps
 		offsetsChan: make(chan model.BatchMetadata, 100), // Buffer ~100 I-frames
 
-		writer:   NewWriter(config.App.ArchiveManager.StoragePath, config.App.ArchiveManager.FragmentLength),
+		writer:   NewWriter(config.App.ArchiveManager.StoragePath, config.App.ArchiveManager.FragmentDuration),
 		dbWriter: db.NewDatabaseWriter(cameraID),
 	}
 }

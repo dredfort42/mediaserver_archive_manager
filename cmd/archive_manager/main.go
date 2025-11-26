@@ -13,6 +13,7 @@ import (
 	"archive_manager/internal/config"
 	"archive_manager/internal/controller"
 	"archive_manager/internal/db"
+	"archive_manager/internal/retention"
 	"archive_manager/internal/router"
 
 	log "github.com/dredfort42/go_logger"
@@ -76,6 +77,11 @@ func main() {
 
 	if err := controller.Init(ctx, &wg); err != nil {
 		log.Error.Println("Controller initialization failed:", err)
+		cancel()
+	}
+
+	if err := retention.Init(ctx, cancel, &wg); err != nil {
+		log.Error.Println("Retention initialization failed:", err)
 		cancel()
 	}
 

@@ -27,7 +27,8 @@ func printConfiguration(l *log.Logger) {
 
 	l.Printf("Archive Manager Configuration:\n")
 	l.Printf("├─ Storage Path: %s\n", App.ArchiveManager.StoragePath)
-	l.Printf("└─ Fragment Length: %v\n", App.ArchiveManager.FragmentLength)
+	l.Printf("├─ Fragment Duration: %v\n", App.ArchiveManager.FragmentDuration)
+	l.Printf("└─ Retention Workers: %d\n", App.ArchiveManager.RetentionWorkers)
 	l.Println()
 
 	l.Printf("Database Configuration:\n")

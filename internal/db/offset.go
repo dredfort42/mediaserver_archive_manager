@@ -87,7 +87,7 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 
 	for _, offset := range dw.batch {
 		folder := getFolderName(offset.IFrameTimestamp)
-		file := getFileName(offset.IFrameTimestamp, config.App.ArchiveManager.FragmentLength)
+		file := getFileName(offset.IFrameTimestamp, config.App.ArchiveManager.FragmentDuration)
 		k := key{folder: folder, file: file}
 		grouped[k] = append(grouped[k], offset)
 	}
@@ -128,7 +128,7 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	}
 
 	log.Debug.Printf("Flushed %d I-frame offsets to database for camera %s", len(dw.batch), dw.cameraID)
-	
+
 	// Reset batch and periodically shrink capacity to prevent unbounded growth
 	if cap(dw.batch) > batchSize*4 {
 		dw.batch = make([]model.BatchMetadata, 0, batchSize)
@@ -146,4 +146,20 @@ func getFolderName(timestamp int64) int64 {
 func getFileName(timestamp int64, fragmentLength time.Duration) int64 {
 	secondsSinceMidnight := timestamp % 86400
 	return secondsSinceMidnight - (secondsSinceMidnight % int64(fragmentLength.Seconds()))
+}
+
+func DeleteAllOffsetsByCameraID(cameraID string) error {
+	query := `DELETE FROM iframe_byte_offsets WHERE camera_id = $1;`
+	_, err := db.Exec(query, cameraID)
+	return err
+}
+
+func DeleteOffsetsByCameraIDOlderThan(cameraID string, folder, file int64) error {
+	query := `
+DELETE FROM iframe_byte_offsets
+WHERE camera_id = $1
+  AND (folder < $2 OR (folder = $2 AND file <= $3));
+`
+	_, err := db.Exec(query, cameraID, folder, file)
+	return err
 }
