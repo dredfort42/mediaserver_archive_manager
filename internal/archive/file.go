@@ -17,8 +17,9 @@ type Writer struct {
 	currentOffset       int64
 	fileStartTime       time.Time
 	fragmentLength      time.Duration
-	lastIFrameTimestamp int64
 	fileFrameCount      int64
+	lastIFrameTimestamp int64
+	lastFileFrameCount  int64
 }
 
 func NewWriter(outputPath string, fragmentLength time.Duration) *Writer {
@@ -71,7 +72,7 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 				IFrameTimestamp:        w.lastIFrameTimestamp,
 				IFrameOffset:           0,
 				IFramePacketNumInBatch: 0,
-				TotalPackets:           w.fileFrameCount,
+				TotalPackets:           w.lastFileFrameCount,
 			}
 
 			select {
@@ -103,6 +104,8 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 			IFramePacketNumInBatch: w.fileFrameCount, // Count of frames BEFORE this I-frame
 			TotalPackets:           0,                // Will be updated when file is closed
 		}
+
+		w.lastFileFrameCount = w.fileFrameCount
 
 		select {
 		case offsetsChan <- offset:
@@ -153,8 +156,9 @@ func (w *Writer) rotateFile(cameraID string, timestamp int64) error {
 	w.currentFile = file
 	w.currentOffset = 0
 	w.fileStartTime = time.Unix(timestamp-(timestamp%int64(w.fragmentLength.Seconds())), 0)
-	w.lastIFrameTimestamp = 0
 	w.fileFrameCount = 0
+	w.lastIFrameTimestamp = 0
+	w.lastFileFrameCount = 0
 
 	log.Info.Printf("Created new archive file: %s", filepath)
 	return nil
