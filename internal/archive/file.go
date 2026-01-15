@@ -17,7 +17,8 @@ type Writer struct {
 
 	// Current file state
 	currentFile             *os.File
-	currentIFrameTimestamp  int64
+	currentCameraID         string
+	currentFileTimestamp    int64
 	currentIFrameByteOffset int64
 	fileStartTime           time.Time
 	totalVideoFramesInFile  int64
@@ -31,7 +32,12 @@ func NewWriter(outputPath string, fragmentLength time.Duration) *Writer {
 }
 
 func (w *Writer) Run(ctx context.Context, framesChan <-chan model.Frame, offsetsChan chan<- model.BatchMetadata) {
-	defer w.closeCurrentFile()
+	defer func() {
+		if w.currentFile != nil {
+			w.sendFinalMetadata(offsetsChan)
+		}
+		w.closeCurrentFile()
+	}()
 
 	for {
 		select {
@@ -58,12 +64,17 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 	}
 
 	if w.currentFile == nil || (frame.IsIFrame && w.shouldRotateFile()) {
+		// Send final total_packets for previous file before rotating
+		if w.currentFile != nil {
+			w.sendFinalMetadata(offsetsChan)
+		}
+		
 		if err := w.rotateFile(frame.CameraID, frame.Timestamp); err != nil {
 			return fmt.Errorf("failed to rotate file: %w", err)
 		}
 	}
 
-	// Write frame to file BEFORE counting
+	// Write frame to file
 	n, err := w.currentFile.Write(frame.Data)
 	if err != nil {
 		return fmt.Errorf("failed to write frame: %w", err)
@@ -73,15 +84,14 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 		w.totalVideoFramesInFile++
 	}
 
-	// If I-frame, send offset to database writer with current offset (before updating)
+	// If I-frame, send offset to database writer
 	if frame.IsIFrame {
-		w.currentIFrameTimestamp = frame.Timestamp
-
 		offset := model.BatchMetadata{
 			CameraID:               frame.CameraID,
 			IFrameTimestamp:        frame.Timestamp,
 			IFrameOffset:           w.currentIFrameByteOffset,
-			IFramePacketNumInBatch: w.totalVideoFramesInFile, // Count of frames BEFORE this I-frame
+			IFramePacketNumInBatch: w.totalVideoFramesInFile,
+			TotalPackets:           0, // Not complete yet
 		}
 
 		select {
@@ -91,10 +101,31 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 		}
 	}
 
-	// Update counters AFTER writing and sending offset
+	// Update byte offset after writing
 	w.currentIFrameByteOffset += int64(n)
 
 	return nil
+}
+
+func (w *Writer) sendFinalMetadata(offsetsChan chan<- model.BatchMetadata) {
+	if w.currentCameraID == "" {
+		return
+	}
+
+	finalMetadata := model.BatchMetadata{
+		CameraID:               w.currentCameraID,
+		IFrameTimestamp:        w.currentFileTimestamp,
+		IFrameOffset:           0,
+		IFramePacketNumInBatch: 0,
+		TotalPackets:           w.totalVideoFramesInFile,
+	}
+
+	select {
+	case offsetsChan <- finalMetadata:
+		log.Debug.Printf("Sent final metadata for file: total_packets=%d", w.totalVideoFramesInFile)
+	default:
+		log.Warning.Println("Offset channel full, dropping final metadata")
+	}
 }
 
 func (w *Writer) shouldRotateFile() bool {
@@ -110,8 +141,6 @@ func (w *Writer) shouldRotateFile() bool {
 }
 
 func (w *Writer) rotateFile(cameraID string, timestamp int64) error {
-	w.closeCurrentFile()
-
 	folder := timestamp / 86400 // Daily folders
 	folderPath := filepath.Join(w.outputPath, cameraID, fmt.Sprintf("%d", folder))
 
@@ -129,7 +158,8 @@ func (w *Writer) rotateFile(cameraID string, timestamp int64) error {
 	}
 
 	w.currentFile = file
-	w.currentIFrameTimestamp = timestamp
+	w.currentCameraID = cameraID
+	w.currentFileTimestamp = timestamp
 	w.currentIFrameByteOffset = 0
 	w.fileStartTime = time.Unix(timestamp-(timestamp%int64(w.fragmentLength.Seconds())), 0)
 	w.totalVideoFramesInFile = 0

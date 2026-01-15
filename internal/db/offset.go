@@ -97,25 +97,34 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 		var arrayValues string
 		var totalPackets int64 = 0
 
-		for _, offset := range offsets {
+		for i, offset := range offsets {
+			if len(arrayValues) > 0 {
+				arrayValues += ","
+			}
+			arrayValues += fmt.Sprintf("ROW(%d,%d)", offset.IFrameTimestamp, offset.IFrameOffset)
+
+			// Use TotalPackets if explicitly set (file completed), otherwise use running count
 			if offset.TotalPackets > 0 {
 				totalPackets = offset.TotalPackets
-			} else {
-				if len(arrayValues) > 0 {
-					arrayValues += ","
-				}
-				arrayValues += fmt.Sprintf("ROW(%d,%d)", offset.IFrameTimestamp, offset.IFrameOffset)
+			} else if i == len(offsets)-1 {
+				// Use the last IFramePacketNumInBatch as temporary total
 				totalPackets = offset.IFramePacketNumInBatch
 			}
 		}
 
+		// Skip if no offsets to insert
+		if arrayValues == "" {
+			continue
+		}
+
 		query := fmt.Sprintf(
 			"INSERT INTO %s (camera_id, folder, file, iframe_indexes, total_packets) VALUES ($1, $2, $3, ARRAY[%s]::iframe_index[], $4) "+
-				"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || ARRAY[%s]::iframe_index[], total_packets = $4",
+				"ON CONFLICT (camera_id, folder, file) DO UPDATE SET iframe_indexes = %s.iframe_indexes || ARRAY[%s]::iframe_index[], total_packets = GREATEST(%s.total_packets, $4)",
 			config.App.Database.TableIFrameByteOffsets,
 			arrayValues,
 			config.App.Database.TableIFrameByteOffsets,
 			arrayValues,
+			config.App.Database.TableIFrameByteOffsets,
 		)
 
 		if _, err := tx.ExecContext(ctx, query, dw.cameraID, k.folder, k.file, totalPackets); err != nil {
