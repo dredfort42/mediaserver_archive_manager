@@ -12,17 +12,16 @@ import (
 )
 
 type Writer struct {
-	outputPath          string
-	currentFile         *os.File
-	currentOffset       int64
-	fileStartTime       time.Time
-	fragmentLength      time.Duration
-	fileFrameCount      int64
-	lastIFrameTimestamp int64
-	lastFileFrameCount  int64
-}
+	outputPath     string
+	fragmentLength time.Duration
 
-const totalPacketsSentDelay = 10 * time.Second
+	// Current file state
+	currentFile             *os.File
+	currentIFrameTimestamp  int64
+	currentIFrameByteOffset int64
+	fileStartTime           time.Time
+	totalVideoFramesInFile  int64
+}
 
 func NewWriter(outputPath string, fragmentLength time.Duration) *Writer {
 	return &Writer{
@@ -55,38 +54,10 @@ func (w *Writer) Run(ctx context.Context, framesChan <-chan model.Frame, offsets
 
 func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchMetadata) error {
 	if len(frame.Data) == 0 {
-		return nil // Skip empty frames
+		return nil
 	}
 
-	// Create file if needed (first frame or no file)
-	if w.currentFile == nil {
-		if err := w.rotateFile(frame.CameraID, frame.Timestamp); err != nil {
-			return fmt.Errorf("failed to create initial file: %w", err)
-		}
-	}
-
-	// Rotate file if I-frame and time-based rotation is needed
-	if frame.IsIFrame && w.shouldRotateFile() {
-		// Send final metadata with total frame count for the file being closed
-		if w.lastIFrameTimestamp > 0 && w.fileFrameCount > 0 {
-			offset := model.BatchMetadata{
-				CameraID:               frame.CameraID,
-				IFrameTimestamp:        w.lastIFrameTimestamp,
-				IFrameOffset:           0,
-				IFramePacketNumInBatch: 0,
-				TotalPackets:           w.lastFileFrameCount,
-			}
-
-			go func(metadata model.BatchMetadata) {
-				time.Sleep(totalPacketsSentDelay)
-				select {
-				case offsetsChan <- metadata:
-				default:
-					log.Warning.Println("Offset channel full, dropping offset")
-				}
-			}(offset)
-		}
-
+	if w.currentFile == nil || (frame.IsIFrame && w.shouldRotateFile()) {
 		if err := w.rotateFile(frame.CameraID, frame.Timestamp); err != nil {
 			return fmt.Errorf("failed to rotate file: %w", err)
 		}
@@ -98,19 +69,20 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 		return fmt.Errorf("failed to write frame: %w", err)
 	}
 
+	if frame.IsVideoFrame {
+		w.totalVideoFramesInFile++
+	}
+
 	// If I-frame, send offset to database writer with current offset (before updating)
 	if frame.IsIFrame {
-		w.lastIFrameTimestamp = frame.Timestamp
+		w.currentIFrameTimestamp = frame.Timestamp
 
 		offset := model.BatchMetadata{
 			CameraID:               frame.CameraID,
 			IFrameTimestamp:        frame.Timestamp,
-			IFrameOffset:           w.currentOffset,
-			IFramePacketNumInBatch: w.fileFrameCount, // Count of frames BEFORE this I-frame
-			TotalPackets:           0,                // Will be updated when file is closed
+			IFrameOffset:           w.currentIFrameByteOffset,
+			IFramePacketNumInBatch: w.totalVideoFramesInFile, // Count of frames BEFORE this I-frame
 		}
-
-		w.lastFileFrameCount = w.fileFrameCount
 
 		select {
 		case offsetsChan <- offset:
@@ -120,10 +92,8 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 	}
 
 	// Update counters AFTER writing and sending offset
-	w.currentOffset += int64(n)
-	if frame.IsVideoFrame {
-		w.fileFrameCount++
-	}
+	w.currentIFrameByteOffset += int64(n)
+
 	return nil
 }
 
@@ -159,11 +129,10 @@ func (w *Writer) rotateFile(cameraID string, timestamp int64) error {
 	}
 
 	w.currentFile = file
-	w.currentOffset = 0
+	w.currentIFrameTimestamp = timestamp
+	w.currentIFrameByteOffset = 0
 	w.fileStartTime = time.Unix(timestamp-(timestamp%int64(w.fragmentLength.Seconds())), 0)
-	w.fileFrameCount = 0
-	w.lastIFrameTimestamp = 0
-	w.lastFileFrameCount = 0
+	w.totalVideoFramesInFile = 0
 
 	log.Info.Printf("Created new archive file: %s", filepath)
 	return nil
