@@ -22,6 +22,8 @@ type Writer struct {
 	lastFileFrameCount  int64
 }
 
+const totalPacketsSentDelay = 10 * time.Second
+
 func NewWriter(outputPath string, fragmentLength time.Duration) *Writer {
 	return &Writer{
 		outputPath:     outputPath,
@@ -75,11 +77,14 @@ func (w *Writer) processFrame(frame model.Frame, offsetsChan chan<- model.BatchM
 				TotalPackets:           w.lastFileFrameCount,
 			}
 
-			select {
-			case offsetsChan <- offset:
-			default:
-				log.Warning.Println("Offset channel full, dropping offset")
-			}
+			go func(metadata model.BatchMetadata) {
+				time.Sleep(totalPacketsSentDelay)
+				select {
+				case offsetsChan <- metadata:
+				default:
+					log.Warning.Println("Offset channel full, dropping offset")
+				}
+			}(offset)
 		}
 
 		if err := w.rotateFile(frame.CameraID, frame.Timestamp); err != nil {
