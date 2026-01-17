@@ -149,11 +149,11 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 }
 
 func getFolderName(timestamp int64) int64 {
-	return timestamp / 86400
+	return (timestamp / 1000) / 86400 // Converts ms to seconds, then to days
 }
 
 func getFileName(timestamp int64, fragmentLength time.Duration) int64 {
-	secondsSinceMidnight := timestamp % 86400
+	secondsSinceMidnight := (timestamp / 1000) % 86400 // Converts ms to seconds
 	return secondsSinceMidnight - (secondsSinceMidnight % int64(fragmentLength.Seconds()))
 }
 
