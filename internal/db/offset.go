@@ -86,8 +86,8 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	grouped := make(map[key][]model.BatchMetadata)
 
 	for _, offset := range dw.batch {
-		folder := getFolderName(offset.IFrameTimestamp)
-		file := getFileName(offset.IFrameTimestamp, config.App.ArchiveManager.FragmentDuration)
+		folder := GetFolderName(offset.IFrameTimeCode)
+		file := GetFileName(offset.IFrameTimeCode, config.App.ArchiveManager.FragmentDuration)
 		k := key{folder: folder, file: file}
 		grouped[k] = append(grouped[k], offset)
 	}
@@ -95,20 +95,16 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	// Insert each group with dynamic SQL
 	for k, offsets := range grouped {
 		var arrayValues string
-		var totalPackets int64 = 0
+		var videoFrameCount int64 = 0
 
-		for i, offset := range offsets {
+		for _, offset := range offsets {
 			if len(arrayValues) > 0 {
 				arrayValues += ","
 			}
-			arrayValues += fmt.Sprintf("ROW(%d,%d)", offset.IFrameTimestamp, offset.IFrameOffset)
+			arrayValues += fmt.Sprintf("ROW(%d,%d)", offset.IFrameTimeCode, offset.IFrameOffset)
 
-			// Use TotalPackets if explicitly set (file completed), otherwise use running count
-			if offset.TotalPackets > 0 {
-				totalPackets = offset.TotalPackets
-			} else if i == len(offsets)-1 {
-				// Use the last IFramePacketNumInBatch as temporary total
-				totalPackets = offset.IFramePacketNumInBatch
+			if offset.VideoFramesInBatch > videoFrameCount {
+				videoFrameCount = offset.VideoFramesInBatch
 			}
 		}
 
@@ -127,7 +123,7 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 			config.App.Database.TableIFrameByteOffsets,
 		)
 
-		if _, err := tx.ExecContext(ctx, query, dw.cameraID, k.folder, k.file, totalPackets); err != nil {
+		if _, err := tx.ExecContext(ctx, query, dw.cameraID, k.folder, k.file, videoFrameCount); err != nil {
 			return fmt.Errorf("failed to insert offsets for folder=%d file=%d: %w", k.folder, k.file, err)
 		}
 	}
@@ -148,11 +144,11 @@ func (dw *DatabaseWriter) flush(ctx context.Context) error {
 	return nil
 }
 
-func getFolderName(timestamp int64) int64 {
+func GetFolderName(timestamp int64) int64 {
 	return (timestamp / 1000) / 86400 // Converts ms to seconds, then to days
 }
 
-func getFileName(timestamp int64, fragmentLength time.Duration) int64 {
+func GetFileName(timestamp int64, fragmentLength time.Duration) int64 {
 	secondsSinceMidnight := (timestamp / 1000) % 86400 // Converts ms to seconds
 	return secondsSinceMidnight - (secondsSinceMidnight % int64(fragmentLength.Seconds()))
 }
